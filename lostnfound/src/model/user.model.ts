@@ -14,7 +14,8 @@ export interface User extends Document {
   createdAt: Date;
 }
 
-const userSchema = {
+// Create a proper Mongoose schema
+const UserSchema: Schema<User> = new Schema({
   username: {
     type: String,
     required: [true, "Username is required"],
@@ -73,9 +74,7 @@ const userSchema = {
     type: Date,
     default: Date.now,
   },
-};
-
-const UserSchema: Schema<User> = new Schema(userSchema);
+});
 
 // Export the model
 export default mongoose.models.User || mongoose.model<User>("User", UserSchema);

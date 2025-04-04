@@ -19,12 +19,19 @@ export default function ItemCard({ item }: ItemCardProps) {
     <Card className="overflow-hidden border-[#333] bg-[#1A1A1A] text-white hover:shadow-lg transition-shadow duration-300">
       <div className="relative h-48 w-full bg-[#2A2A2A]">
         {item.image ? (
-          <Image
-            src={item.image}
-            alt={item.name}
-            fill
-            className="object-cover"
-          />
+          // Use a simple img tag instead of Next.js Image component to avoid domain restrictions
+          // Or handle errors with the Image component
+          <div className="h-full w-full relative">
+            <img
+              src={item.image}
+              alt={item.name}
+              className="object-cover h-full w-full"
+              onError={(e) => {
+                e.currentTarget.onerror = null;
+                e.currentTarget.src = "/images/placeholder.jpg"; // Use a default local placeholder
+              }}
+            />
+          </div>
         ) : (
           <div className="flex items-center justify-center h-full">
             <span className="text-gray-500">No image available</span>

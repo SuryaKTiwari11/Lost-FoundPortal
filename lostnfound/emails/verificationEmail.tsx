@@ -32,13 +32,13 @@ export function VerificationEmail({
 }: EmailProps): JSX.Element {
   // Color theme updated to match the website
   const colors = {
-    primary: "#FFD166", // Gold accent color
-    secondary: "#333333", // Dark gray for secondary elements
-    background: "#121212", // Dark background
-    backgroundLight: "#1A1A1A", // Slightly lighter background
-    text: "#FFFFFF", // White text
-    textDark: "#121212", // Dark text for contrast elements
-    border: "#2A2A2A", // Border color
+    primary: "#FFD166",
+    secondary: "#333333",
+    background: "#121212",
+    backgroundLight: "#1A1A1A",
+    text: "#FFFFFF",
+    textDark: "#121212",
+    border: "#2A2A2A",
   } as const;
 
   const main: StyleObject = {

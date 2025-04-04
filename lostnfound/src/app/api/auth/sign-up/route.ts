@@ -12,10 +12,10 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { firstName, lastName, rollNumber, email, password } = body;
 
-    // Generate username if not provided
+   
     const username = body.username || generateUsername(firstName, lastName);
 
-    // Validate required fields
+  
     if (!firstName || !lastName || !rollNumber || !email || !password) {
       return NextResponse.json(
         { success: false, message: "Missing required fields" },
@@ -32,7 +32,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // Generate verification code and expiry date
+  
     const verifyCode = Math.floor(100000 + Math.random() * 900000).toString();
     const verifyCodeExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour from now
     const hashedPassword = await bcrypt.hash(password, 10);

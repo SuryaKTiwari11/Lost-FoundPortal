@@ -35,8 +35,8 @@ export default function RootLayout({
           <div className="flex flex-col min-h-screen">
             <Navbar />
             <main className="flex-grow">{children}</main>
-            <footer className="py-6 border-t border-[#333333] bg-[#121212]">
-              <div className="container mx-auto px-4">
+            <footer className="py-6 border-t border-[#333333] bg-[#121212] w-full flex ">
+              <div className="container mx-auto justify-between px-3 sm:px-6 lg:px-8 max-w-screen-xl">
                 <div className="flex items-center gap-2 mb-6">
                   <div className="rounded-full bg-[#FFD166] p-1">
                     <Search

@@ -1,5 +1,5 @@
 import { resend } from "@/lib/resend";
-import VerificationEmail from "../../emails/verificationEmails";
+import VerificationEmail from "../../emails/verificationEmail";
 import { ApiResponse } from "@/types/ApiResponse";
 
 export async function sendVerificationEmail(
@@ -11,7 +11,7 @@ export async function sendVerificationEmail(
     // Create verification URL
     const verificationUrl = `${process.env.NEXT_PUBLIC_APP_URL}/verify?code=${verifyCode}`;
 
-    // Send email using Resend
+    // Send email using Resend  
     await resend.emails.send({
       from: "onboard@resend.dev",
       to: email,

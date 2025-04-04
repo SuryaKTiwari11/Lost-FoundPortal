@@ -78,33 +78,33 @@ export default function SignIn() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-[#121212]">
-      <Card className="w-full max-w-md bg-[#1A1A1A] border-[#333333] shadow-xl">
-        <CardHeader className="space-y-1 text-center">
-          <CardTitle className="text-2xl font-bold text-white">Welcome Back</CardTitle>
-          <p className="text-gray-400">Sign in to your account to continue</p>
+    <div className="min-h-screen flex items-center justify-center p-6 bg-[#121212]">
+      <Card className="w-full max-w-3xl bg-[#1A1A1A] border-[#333333] shadow-xl">
+        <CardHeader className="space-y-2 text-center pb-6 pt-8">
+          <CardTitle className="text-3xl font-bold text-white">Welcome Back</CardTitle>
+          <p className="text-gray-400 text-base">Sign in to your account to continue</p>
         </CardHeader>
 
         <form onSubmit={handleSubmit}>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-6 px-8 pt-2">
             {error && (
-              <div className="p-3 rounded-md bg-red-900/30 border border-red-800 text-red-200 text-sm">
+              <div className="p-4 rounded-md bg-red-900/30 border border-red-800 text-red-200 text-sm">
                 {error}
               </div>
             )}
 
             <div className="space-y-2">
-              <label htmlFor="email" className="text-sm font-medium text-white">
+              <label htmlFor="email" className="text-sm font-medium text-white block pb-1">
                 Email
               </label>
               <div className="relative">
-                <Mail className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                <Mail className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
                 <Input
                   id="email"
                   name="email"
                   type="email"
                   placeholder="Enter your email"
-                  className="pl-10 bg-[#2A2A2A] border-[#333333] text-white"
+                  className="pl-11 bg-[#2A2A2A] border-[#333333] text-white h-12 text-base"
                   value={formData.email}
                   onChange={handleChange}
                 />
@@ -112,7 +112,7 @@ export default function SignIn() {
             </div>
 
             <div className="space-y-2">
-              <div className="flex justify-between items-center">
+              <div className="flex justify-between items-center pb-1">
                 <label
                   htmlFor="password"
                   className="text-sm font-medium text-white"
@@ -127,35 +127,35 @@ export default function SignIn() {
                 </Link>
               </div>
               <div className="relative">
-                <Lock className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                <Lock className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
                 <Input
                   id="password"
                   name="password"
                   type={showPassword ? "text" : "password"}
                   placeholder="Enter your password"
-                  className="pl-10 bg-[#2A2A2A] border-[#333333] text-white"
+                  className="pl-11 bg-[#2A2A2A] border-[#333333] text-white h-12 text-base"
                   value={formData.password}
                   onChange={handleChange}
                 />
                 <button
                   type="button"
-                  className="absolute right-3 top-2.5 text-gray-400"
+                  className="absolute right-3 top-3 text-gray-400"
                   onClick={() => setShowPassword(!showPassword)}
                 >
                   {showPassword ? (
-                    <EyeOff className="h-4 w-4" />
+                    <EyeOff className="h-5 w-5" />
                   ) : (
-                    <Eye className="h-4 w-4" />
+                    <Eye className="h-5 w-5" />
                   )}
                 </button>
               </div>
             </div>
 
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2 pt-2">
               <input
                 type="checkbox"
                 id="remember"
-                className="rounded border-[#333333] bg-[#2A2A2A] text-[#FFD166] focus:ring-[#FFD166]/50"
+                className="rounded border-[#333333] bg-[#2A2A2A] text-[#FFD166] focus:ring-[#FFD166]/50 h-4 w-4"
               />
               <label
                 htmlFor="remember"
@@ -166,9 +166,9 @@ export default function SignIn() {
             </div>
           </CardContent>
 
-          <CardFooter className="flex flex-col">
+          <CardFooter className="flex flex-col px-8 py-8">
             <Button 
-              className="w-full bg-[#FFD166] text-[#121212] hover:bg-[#FFD166]/90" 
+              className="w-full bg-[#FFD166] text-[#121212] hover:bg-[#FFD166]/90 py-6 text-base font-medium rounded-md" 
               type="submit" 
               disabled={loading}
             >
@@ -176,20 +176,20 @@ export default function SignIn() {
               {loading ? "Signing In..." : "Sign In"}
             </Button>
 
-            <div className="relative my-6">
+            <div className="relative my-10">
               <div className="absolute inset-0 flex items-center">
                 <span className="w-full border-t border-[#333333]"></span>
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-[#1A1A1A] px-2 text-gray-400">
+                <span className="bg-[#1A1A1A] px-4 text-gray-400">
                   Or continue with
                 </span>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <Button variant="outline" className="w-full border-[#333333] text-white hover:bg-[#2A2A2A]">
-                <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Button variant="outline" className="w-full border-[#333333] text-white hover:bg-[#2A2A2A] h-12">
+                <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24">
                   <path
                     d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
                     fill="#4285F4"
@@ -209,9 +209,9 @@ export default function SignIn() {
                 </svg>
                 Google
               </Button>
-              <Button variant="outline" className="w-full border-[#333333] text-white hover:bg-[#2A2A2A]">
+              <Button variant="outline" className="w-full border-[#333333] text-white hover:bg-[#2A2A2A] h-12">
                 <svg
-                  className="mr-2 h-4 w-4"
+                  className="mr-2 h-5 w-5"
                   xmlns="http://www.w3.org/2000/svg"
                   viewBox="0 0 24 24"
                 >
@@ -224,7 +224,7 @@ export default function SignIn() {
               </Button>
             </div>
 
-            <p className="mt-4 text-center text-sm text-gray-400">
+            <p className="mt-8 text-center text-sm text-gray-400">
               Don't have an account?{" "}
               <Link href="/sign-up" className="text-[#FFD166] hover:underline">
                 Sign Up

@@ -1,13 +1,15 @@
-import SearchLostItems from '@/components/SearchLostItems';
+import SearchLostItems from "@/components/SearchLostItems";
 
 export default function SearchPage() {
   return (
-    <div className="min-h-screen py-8 md:py-12" style={{ backgroundColor: "#121212", color: "#FFFFFF" }}>
+    <div className="min-h-screen py-10 md:py-16 bg-[#121212] text-white">
       <div className="container mx-auto px-4">
-        <h1 className="text-3xl font-bold text-center mb-8" style={{ color: "#FFD166" }}>
+        <h1 className="text-4xl font-bold text-center mb-2 text-[#FFD166]">
           Find Lost Items
         </h1>
-        <SearchLostItems />
+        <div className="mt-10">
+          <SearchLostItems />
+        </div>
       </div>
     </div>
   );
