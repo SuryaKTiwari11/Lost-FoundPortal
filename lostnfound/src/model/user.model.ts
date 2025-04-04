@@ -1,5 +1,17 @@
-const mongoose = require("mongoose");
-const UserSchema = new mongoose.Schema(userSchema);
+import mongoose, { Schema, Document } from "mongoose";
+
+export interface User extends Document {
+  firstName: string;
+  lastName: string;
+  rollNumber: string;
+  universityEmail: string;
+  password: string;
+  profilePicture?: string;
+  verified: boolean;
+  isAcceptingMessages: boolean;
+  createdAt: Date;
+}
+
 const userSchema = {
   firstName: {
     type: String,
@@ -33,14 +45,25 @@ const userSchema = {
     type: String,
     default: "", // URL to default profile image could go here
   },
+  isVerified: {
+    type: Boolean,
+    default: false,
+  },
+  verifyCode: {
+    type: String,
+    select: false, // Don't return verification code in query results
+  },
+  verifyCodeExpiry: {
+    type: Date,
+  },
   createdAt: {
     type: Date,
     default: Date.now,
   },
 };
 
-// Export the schema (assuming you're using Mongoose)
+const UserSchema: Schema<User> = new Schema(userSchema);
 
-// Pre-save middleware to hash password could be added here
-
-module.exports = mongoose.model("User", UserSchema);
+// Export the model
+export default mongoose.models.User || mongoose.model<User>("User", UserSchema);
+//first time create or use existing model
