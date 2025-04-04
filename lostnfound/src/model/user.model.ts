@@ -1,18 +1,31 @@
 import mongoose, { Schema, Document } from "mongoose";
 
 export interface User extends Document {
+  username: string; // Added username field
   firstName: string;
   lastName: string;
   rollNumber: string;
   universityEmail: string;
   password: string;
   profilePicture?: string;
-  verified: boolean;
-  isAcceptingMessages: boolean;
+  isVerified: boolean; // Changed from verified to isVerified to match schema
+  verifyCode?: string;
+  verifyCodeExpiry?: Date;
   createdAt: Date;
 }
 
 const userSchema = {
+  username: {
+    type: String,
+    required: [true, "Username is required"],
+    unique: true,
+    trim: true,
+    minlength: [3, "Username must be at least 3 characters long"],
+    match: [
+      /^[a-zA-Z0-9_]+$/,
+      "Username can only contain letters, numbers and underscores",
+    ],
+  },
   firstName: {
     type: String,
     required: [true, "First name is required"],

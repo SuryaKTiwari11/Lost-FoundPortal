@@ -1,230 +1,221 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import Spinner from "@/components/ui/Spinner";
+import { Eye, EyeOff, User, Mail, Lock } from "lucide-react";
 
 export default function SignUp() {
-  const router = useRouter();
-  const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    universityEmail: "",
-    rollNumber: "",
-    password: "",
-    confirmPassword: "",
-  });
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    password: "",
+    confirmPassword: ""
+  });
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    
+    // Clear errors when user types
+    if (errors[name]) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[name];
+        return newErrors;
+      });
+    }
+  };
+
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+    
+    if (!formData.name.trim()) {
+      newErrors.name = "Name is required";
+    }
+    
+    if (!formData.email.trim()) {
+      newErrors.email = "Email is required";
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      newErrors.email = "Email is invalid";
+    }
+    
+    if (!formData.password) {
+      newErrors.password = "Password is required";
+    } else if (formData.password.length < 8) {
+      newErrors.password = "Password must be at least 8 characters";
+    }
+    
+    if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = "Passwords do not match";
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    // Basic validation
-    if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match");
+    
+    if (!validateForm()) {
       return;
     }
-
-    if (formData.password.length < 8) {
-      setError("Password must be at least 8 characters");
-      return;
-    }
-
-    if (!formData.universityEmail.endsWith("@thapar.edu")) {
-      setError("Email must be a valid @thapar.edu address");
-      return;
-    }
-
+    
     setLoading(true);
-    setError("");
-
+    
     try {
-      // Call your API to register the user
-      const response = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          universityEmail: formData.universityEmail,
-          rollNumber: formData.rollNumber,
-          password: formData.password,
-        }),
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Redirect to dashboard on success
+      window.location.href = "/dashboard";
+    } catch (error) {
+      console.error("Signup error:", error);
+      setErrors({
+        form: "An error occurred during signup. Please try again."
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Something went wrong");
-      }
-
-      // Redirect to sign-in page on success
-      router.push("/sign-in?registered=success");
-    } catch (error: any) {
-      setError(error.message || "Failed to register. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50">
-      <div className="w-full max-w-md p-8 space-y-8 bg-white rounded-lg shadow-md">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold">Create an Account</h1>
-          <p className="mt-2 text-gray-600">Join Lost & Found Portal</p>
-        </div>
-
-        {error && (
-          <div className="p-3 text-sm text-red-600 bg-red-100 rounded-md">
-            {error}
-          </div>
-        )}
-
-        <form className="mt-8 space-y-4" onSubmit={handleSubmit}>
-          <div>
-            <label
-              htmlFor="firstName"
-              className="block text-sm font-medium text-gray-700"
-            >
-              First Name
-            </label>
-            <input
-              id="firstName"
-              name="firstName"
-              type="text"
-              required
-              value={formData.firstName}
-              onChange={handleChange}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
-              placeholder="Enter your first name"
-            />
-          </div>
-
-          <div>
-            <label
-              htmlFor="lastName"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Last Name
-            </label>
-            <input
-              id="lastName"
-              name="lastName"
-              type="text"
-              required
-              value={formData.lastName}
-              onChange={handleChange}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
-              placeholder="Enter your last name"
-            />
-          </div>
-
-          <div>
-            <label
-              htmlFor="universityEmail"
-              className="block text-sm font-medium text-gray-700"
-            >
-              University Email
-            </label>
-            <input
-              id="universityEmail"
-              name="universityEmail"
-              type="email"
-              required
-              value={formData.universityEmail}
-              onChange={handleChange}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
-              placeholder="Enter your @thapar.edu email"
-            />
-          </div>
-
-          <div>
-            <label
-              htmlFor="rollNumber"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Roll Number
-            </label>
-            <input
-              id="rollNumber"
-              name="rollNumber"
-              type="text"
-              required
-              value={formData.rollNumber}
-              onChange={handleChange}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
-              placeholder="Enter your roll number"
-            />
-          </div>
-
-          <div>
-            <label
-              htmlFor="password"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Password
-            </label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              required
-              value={formData.password}
-              onChange={handleChange}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
-              placeholder="Create a password (min 8 characters)"
-            />
-          </div>
-
-          <div>
-            <label
-              htmlFor="confirmPassword"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Confirm Password
-            </label>
-            <input
-              id="confirmPassword"
-              name="confirmPassword"
-              type="password"
-              required
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
-              placeholder="Confirm your password"
-            />
-          </div>
-
-          <div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-            >
-              {loading ? "Creating account..." : "Sign up"}
-            </button>
-          </div>
+    <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-[#121212]">
+      <Card className="w-full max-w-md">
+        <CardHeader className="space-y-1 text-center">
+          <CardTitle className="text-2xl font-bold">Create an Account</CardTitle>
+          <p className="text-gray-400">
+            Enter your details to create your account
+          </p>
+        </CardHeader>
+        
+        <form onSubmit={handleSubmit}>
+          <CardContent className="space-y-4">
+            {errors.form && (
+              <div className="p-3 rounded-md bg-red-900/30 border border-red-800 text-red-200 text-sm">
+                {errors.form}
+              </div>
+            )}
+            
+            <div className="space-y-2">
+              <label htmlFor="name" className="text-sm font-medium text-white">
+                Full Name
+              </label>
+              <div className="relative">
+                <User className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                <Input
+                  id="name"
+                  name="name"
+                  placeholder="Enter your name"
+                  className={`pl-10 ${errors.name ? "border-red-500" : ""}`}
+                  value={formData.name}
+                  onChange={handleChange}
+                />
+              </div>
+              {errors.name && (
+                <p className="text-sm text-red-500">{errors.name}</p>
+              )}
+            </div>
+            
+            <div className="space-y-2">
+              <label htmlFor="email" className="text-sm font-medium text-white">
+                Email
+              </label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  placeholder="Enter your email"
+                  className={`pl-10 ${errors.email ? "border-red-500" : ""}`}
+                  value={formData.email}
+                  onChange={handleChange}
+                />
+              </div>
+              {errors.email && (
+                <p className="text-sm text-red-500">{errors.email}</p>
+              )}
+            </div>
+            
+            <div className="space-y-2">
+              <label htmlFor="password" className="text-sm font-medium text-white">
+                Password
+              </label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                <Input
+                  id="password"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Create a password"
+                  className={`pl-10 ${errors.password ? "border-red-500" : ""}`}
+                  value={formData.password}
+                  onChange={handleChange}
+                />
+                <button
+                  type="button"
+                  className="absolute right-3 top-2.5 text-gray-400"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
+              {errors.password && (
+                <p className="text-sm text-red-500">{errors.password}</p>
+              )}
+            </div>
+            
+            <div className="space-y-2">
+              <label htmlFor="confirmPassword" className="text-sm font-medium text-white">
+                Confirm Password
+              </label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                <Input
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Confirm your password"
+                  className={`pl-10 ${errors.confirmPassword ? "border-red-500" : ""}`}
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                />
+              </div>
+              {errors.confirmPassword && (
+                <p className="text-sm text-red-500">{errors.confirmPassword}</p>
+              )}
+            </div>
+          </CardContent>
+          
+          <CardFooter className="flex flex-col">
+            <Button className="w-full" type="submit" disabled={loading}>
+              {loading ? <Spinner size="sm" className="mr-2" /> : null}
+              {loading ? "Creating Account..." : "Create Account"}
+            </Button>
+            
+            <p className="mt-4 text-center text-sm text-gray-400">
+              Already have an account?{" "}
+              <Link href="/signin" className="text-[#FFD166] hover:underline">
+                Sign In
+              </Link>
+            </p>
+          </CardFooter>
         </form>
-
-        <p className="mt-4 text-center text-sm text-gray-600">
-          Already have an account?{" "}
-          <Link
-            href="/sign-in"
-            className="font-medium text-indigo-600 hover:text-indigo-500"
-          >
-            Sign in
-          </Link>
-        </p>
-      </div>
+      </Card>
     </div>
   );
 }
