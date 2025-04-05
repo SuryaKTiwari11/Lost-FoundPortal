@@ -1,7 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // ...other config...
-
+  images: {
+    domains: ["lh3.googleusercontent.com"],
+  },
   // Add this to reduce the number of fast refreshes
   webpack: (config) => {
     config.watchOptions = {

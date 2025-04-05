@@ -1,21 +1,29 @@
+"use server";
 import { NextResponse } from "next/server";
-import bcrypt from "bcrypt";
-import { dbConnect } from "@/lib/dbConnect";
+import bcrypt from "bcryptjs";
+import { format } from "date-fns";
+import dbConnect from "@/lib/dbConnect";
 import User from "@/model/user.model";
 import { sendVerificationEmail } from "@/helper/sendVerificationEmail";
 import { generateUsername } from "@/helper/generateUsername";
 
 export async function POST(request: Request) {
   try {
+    const body = await request.json();
+
+    if (!body || Object.keys(body).length === 0) {
+      return NextResponse.json(
+        { success: false, message: "Empty request body" },
+        { status: 400 }
+      );
+    }
+
     await dbConnect();
 
-    const body = await request.json();
     const { firstName, lastName, rollNumber, email, password } = body;
 
-   
     const username = body.username || generateUsername(firstName, lastName);
 
-  
     if (!firstName || !lastName || !rollNumber || !email || !password) {
       return NextResponse.json(
         { success: false, message: "Missing required fields" },
@@ -32,9 +40,11 @@ export async function POST(request: Request) {
       );
     }
 
-  
     const verifyCode = Math.floor(100000 + Math.random() * 900000).toString();
-    const verifyCodeExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour from now
+    const verifyCodeExpiry = format(
+      new Date(Date.now() + 60 * 60 * 1000),
+      "yyyy-MM-dd'T'HH:mm:ss.SSSxxx"
+    ); // 1 hour from now
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Check if user exists by email
@@ -109,24 +119,35 @@ async function handleVerificationEmail(
   successMessage: string,
   statusCode: number
 ) {
-  const emailResponse = await sendVerificationEmail(
-    email,
-    username,
-    verifyCode
-  );
+  try {
+    const verificationUrl = `${process.env.NEXTAUTH_URL}/verify-email?code=${verifyCode}&email=${encodeURIComponent(email)}`;
 
-  if (!emailResponse.success) {
+    const emailResponse = await sendVerificationEmail(
+      email,
+      username,
+      verificationUrl
+    );
+
+    if (!emailResponse.success) {
+      console.error("Failed to send verification email:", emailResponse.error);
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Failed to send verification email. Please try again.",
+        },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json(
-      {
-        success: false,
-        message: emailResponse.error || "Failed to send verification email",
-      },
+      { success: true, message: successMessage },
+      { status: statusCode }
+    );
+  } catch (error: any) {
+    console.error("Verification email error:", error);
+    return NextResponse.json(
+      { success: false, message: "Failed to send verification email" },
       { status: 500 }
     );
   }
-
-  return NextResponse.json(
-    { success: true, message: successMessage },
-    { status: statusCode }
-  );
 }

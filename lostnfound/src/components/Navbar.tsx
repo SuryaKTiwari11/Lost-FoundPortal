@@ -17,10 +17,21 @@ import {
   Menu,
   X,
   LogIn,
-  UserPlus,
+  LogOut,
+  User,
   Search as SearchIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useSession, signOut } from "next-auth/react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import Image from "next/image";
 
 // Custom navigation menu style without the dark background
 const customNavStyle = cn(
@@ -32,6 +43,9 @@ const customNavStyle = cn(
 export default function Navbar() {
   const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { data: session, status } = useSession();
+  const isLoading = status === "loading";
+  const isAuthenticated = status === "authenticated" && session?.user;
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
@@ -40,6 +54,9 @@ export default function Navbar() {
   const isLinkActive = (path: string) => {
     return pathname === path;
   };
+
+  // Get first name from Google profile
+  const firstName = session?.user?.name?.split(" ")[0] || "";
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-[#333333] bg-[#121212]/95 backdrop-blur supports-[backdrop-filter]:bg-[#121212]/80">
@@ -152,27 +169,72 @@ export default function Navbar() {
           {/* Buttons - Right */}
           <div className="flex items-center justify-end gap-2">
             <div className="hidden md:flex items-center gap-2">
-              <Button
-                asChild
-                variant="outline"
-                size="sm"
-                className="border-[#333333] text-white hover:bg-[#2A2A2A] hover:text-white"
-              >
-                <Link href="/sign-in">
-                  <LogIn className="mr-2 h-4 w-4" />
-                  Sign In
-                </Link>
-              </Button>
-              <Button
-                asChild
-                size="sm"
-                className="bg-[#FFD166] text-[#121212] hover:bg-[#FFD166]/80"
-              >
-                <Link href="/sign-up">
-                  <UserPlus className="mr-2 h-4 w-4" />
-                  Sign Up
-                </Link>
-              </Button>
+              {isLoading ? (
+                <div className="w-24 h-9 bg-[#1A1A1A] animate-pulse rounded-md"></div>
+              ) : isAuthenticated ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="border-[#333333] text-white hover:bg-[#2A2A2A] hover:text-white flex gap-2 items-center"
+                    >
+                      {session.user.image ? (
+                        <div className="relative w-6 h-6 rounded-full overflow-hidden">
+                          <Image
+                            src={session.user.image}
+                            alt={session.user.name || "User"}
+                            fill
+                            className="object-cover"
+                          />
+                        </div>
+                      ) : (
+                        <User className="h-4 w-4" />
+                      )}
+                      <span>{firstName}</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    align="end"
+                    className="bg-[#1A1A1A] border-[#333333] text-white"
+                  >
+                    <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                    <DropdownMenuSeparator className="bg-[#333333]" />
+                    <DropdownMenuItem
+                      className="focus:bg-[#2A2A2A] focus:text-white cursor-pointer"
+                      asChild
+                    >
+                      <Link href="/dashboard">Dashboard</Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="focus:bg-[#2A2A2A] focus:text-white cursor-pointer"
+                      asChild
+                    >
+                      <Link href="/profile">Profile</Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator className="bg-[#333333]" />
+                    <DropdownMenuItem
+                      onClick={() => signOut({ callbackUrl: "/" })}
+                      className="text-red-400 focus:bg-[#2A2A2A] focus:text-red-400 cursor-pointer"
+                    >
+                      <LogOut className="mr-2 h-4 w-4" />
+                      <span>Sign Out</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <Button
+                  asChild
+                  variant="outline"
+                  size="sm"
+                  className="border-[#333333] text-white hover:bg-[#2A2A2A] hover:text-white"
+                >
+                  <Link href="/sign">
+                    <LogIn className="mr-2 h-4 w-4" />
+                    Sign In
+                  </Link>
+                </Button>
+              )}
             </div>
 
             {/* Mobile Menu Button */}
@@ -238,29 +300,65 @@ export default function Navbar() {
           </Link>
 
           <div className="pt-2 border-t border-[#333333]">
-            <div className="flex flex-col gap-2">
+            {isAuthenticated ? (
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2 px-2 py-3">
+                  {session.user.image ? (
+                    <div className="relative w-8 h-8 rounded-full overflow-hidden">
+                      <Image
+                        src={session.user.image}
+                        alt={session.user.name || "User"}
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
+                  ) : (
+                    <User className="h-5 w-5 text-white" />
+                  )}
+                  <div className="text-sm font-medium text-white">
+                    {firstName}
+                  </div>
+                </div>
+                <Link
+                  href="/dashboard"
+                  className="block p-2 text-sm text-white hover:text-[#FFD166]"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Dashboard
+                </Link>
+                <Link
+                  href="/profile"
+                  className="block p-2 text-sm text-white hover:text-[#FFD166]"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Profile
+                </Link>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-[#333333] text-red-400 hover:bg-[#2A2A2A] w-full mt-2"
+                  onClick={() => {
+                    signOut({ callbackUrl: "/" });
+                    setIsMenuOpen(false);
+                  }}
+                >
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Sign Out
+                </Button>
+              </div>
+            ) : (
               <Button
                 asChild
                 variant="outline"
                 size="sm"
                 className="border-[#333333] text-white hover:bg-[#2A2A2A] w-full"
               >
-                <Link href="/sign-in">
+                <Link href="/sign">
                   <LogIn className="mr-2 h-4 w-4" />
                   Sign In
                 </Link>
               </Button>
-              <Button
-                asChild
-                size="sm"
-                className="bg-[#FFD166] text-[#121212] hover:bg-[#FFD166]/80 w-full"
-              >
-                <Link href="/sign-up">
-                  <UserPlus className="mr-2 h-4 w-4" />
-                  Sign Up
-                </Link>
-              </Button>
-            </div>
+            )}
           </div>
         </div>
       )}

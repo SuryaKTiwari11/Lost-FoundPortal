@@ -28,6 +28,7 @@ async function dbConnect() {
     };
 
     cached.promise = mongoose.connect(MONGODB_URI!, opts).then((mongoose) => {
+      console.log("Connected to MongoDB successfully"); // Added log for successful connection
       return mongoose;
     });
   }
@@ -36,6 +37,7 @@ async function dbConnect() {
     cached.conn = await cached.promise;
   } catch (e) {
     cached.promise = null;
+    console.error("Error connecting to MongoDB:", e); // Added error log for debugging
     throw e;
   }
 

@@ -1,93 +1,113 @@
 import { NextAuthOptions } from "next-auth";
-import CredentialsProvider from "next-auth/providers/credentials";
-import bcrypt from "bcryptjs";
-import  dbConnect  from "@/lib/dbConnect";
+import GoogleProvider from "next-auth/providers/google";
+import dbConnect from "@/lib/dbConnect";
 import User from "@/model/user.model";
+
+declare module "next-auth" {
+  interface Session {
+    user: {
+      id?: string;
+      name?: string;
+      email?: string;
+      image?: string;
+      role?: string;
+    };
+  }
+}
+
+declare module "next-auth/jwt" {
+  interface JWT {
+    id?: string;
+    role?: string;
+  }
+}
 
 export const authOptions: NextAuthOptions = {
   providers: [
-    CredentialsProvider({
-      id: "credentials",
-      name: "Credentials",
-      credentials: {
-        identifier: { label: "Email/Username/Roll Number", type: "text" },
-        password: { label: "Password", type: "password" },
-      },
-      async authorize(credentials) {
-        if (!credentials?.identifier || !credentials?.password) {
-          return null;
-        }
-
-        try {
-          await dbConnect();
-
-          // Find user by email, username, or roll number
-          const user = await User.findOne({
-            $or: [
-              { universityEmail: credentials.identifier },
-              { username: credentials.identifier },
-              { rollNumber: credentials.identifier },
-            ],
-            isVerified: true, // Only allow verified users to log in
-          });
-
-          if (!user) {
-            return null;
-          }
-
-          // Compare password
-          const passwordMatch = await bcrypt.compare(
-            credentials.password,
-            user.password
-          );
-
-          if (!passwordMatch) {
-            return null;
-          }
-
-          // Return user object for session
-          return {
-            id: user._id.toString(),
-            email: user.universityEmail,
-            name: `${user.firstName} ${user.lastName}`,
-            username: user.username,
-            role: user.role || "user",
-          };
-        } catch (error) {
-          console.error("Auth error:", error);
-          return null;
-        }
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID || "",
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+      authorization: {
+        params: {
+          prompt: "select_account",
+        },
       },
     }),
   ],
-  session: {
-    strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60, // 30 days
-  },
   callbacks: {
-    async jwt({ token, user }) {
+    async signIn({ account, profile }) {
+      console.log("Sign-in attempt with profile:", profile?.email);
+
+      // Accept all Google sign-ins for now for debugging
+      return true;
+    },
+    async jwt({ token, user, account }) {
       if (user) {
         token.id = user.id;
-        token.username = user.username;
-        token.role = user.role;
       }
+
+      // If Google sign-in, create or update user in database
+      if (account?.provider === "google" && token.email) {
+        try {
+          await dbConnect();
+
+          // Find or create user in database
+          const user = await User.findOneAndUpdate(
+            { email: token.email },
+            {
+              $setOnInsert: {
+                name: token.name || "User",
+                email: token.email,
+                image: token.picture || "",
+                createdAt: new Date(),
+              },
+              $set: {
+                // Update these fields even if user exists
+                lastLogin: new Date(),
+              },
+            },
+            {
+              upsert: true, // Create if doesn't exist
+              new: true, // Return the updated document
+            }
+          );
+
+          // Add user data to token
+          token.id = user._id.toString();
+          token.role = user.role || "user";
+        } catch (error) {
+          console.error("Error with user in database:", error);
+        }
+      }
+
       return token;
     },
     async session({ session, token }) {
       if (token && session.user) {
-        session.user.id = token.id as string;
-        session.user.username = token.username as string;
+        session.user.id = token.id;
         session.user.role = token.role as string;
       }
       return session;
     },
   },
   pages: {
-    signIn: "/login",
-    error: "/login",
+    signIn: "/sign",
+    error: "/auth-error", // Use our custom error page
   },
-  secret: process.env.NEXTAUTH_SECRET,
-  debug: process.env.NODE_ENV === "development",
+  logger: {
+    error(code, ...message) {
+      console.error(code, message);
+    },
+    warn(code, ...message) {
+      console.warn(code, message);
+    },
+    debug(code, ...message) {
+      console.debug(code, message);
+    },
+  },
+  debug: true, // Always enable debug for troubleshooting
+  secret:
+    process.env.NEXTAUTH_SECRET || "fallback-secret-do-not-use-in-production",
 };
 
 export default authOptions;

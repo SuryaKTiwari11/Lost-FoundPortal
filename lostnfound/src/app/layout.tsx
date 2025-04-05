@@ -114,18 +114,10 @@ export default function RootLayout({
                     <ul className="space-y-2">
                       <li>
                         <Link
-                          href="/sign-in"
+                          href="/sign"
                           className="text-gray-400 hover:text-[#FFD166] text-sm"
                         >
                           Sign In
-                        </Link>
-                      </li>
-                      <li>
-                        <Link
-                          href="/sign-up"
-                          className="text-gray-400 hover:text-[#FFD166] text-sm"
-                        >
-                          Sign Up
                         </Link>
                       </li>
                       <li>
