@@ -24,8 +24,10 @@ import {
   Search,
   X,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 export default function AdminPage() {
+  const router = useRouter();
   const { data: session, status } = useSession();
   const [isLoading, setIsLoading] = useState(true);
   const [items, setItems] = useState<FoundItem[]>([]);
@@ -206,7 +208,7 @@ export default function AdminPage() {
     if (status === "authenticated") {
       // Only admin users should access this page
       if (session?.user?.role !== "admin") {
-        window.location.href = "/";
+        router.push("/admin");
         return;
       }
 
@@ -380,7 +382,7 @@ export default function AdminPage() {
           <h1 className="text-3xl font-bold text-[#FFD166]">Access Denied</h1>
           <p className="mt-4">You need admin privileges to access this page.</p>
           <Link
-            href="/"
+            href="/admin"
             className="inline-block mt-6 px-4 py-2 bg-[#FFD166] text-black rounded-md hover:bg-opacity-90 transition"
           >
             Return to Home
