@@ -5,6 +5,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Search } from "lucide-react";
 import Link from "next/link";
+import { Toaster } from "@/components/ui/sonner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -164,6 +165,7 @@ export default function RootLayout({
             </footer>
           </div>
         </Providers>
+        <Toaster />
       </body>
     </html>
   );

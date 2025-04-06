@@ -46,10 +46,6 @@ export const config = {
     // Protected routes pattern
     "/dashboard/:path*",
     "/profile/:path*",
-    "/item/:path*/edit",
-    "/create/:path*",
-    "/manage/:path*",
-    "/messages/:path*",
     // Omitted public routes like homepage, sign in, etc.
   ],
 };

@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
+import { toast } from "sonner";
 
 // Sample data with local placeholder images
 const SAMPLE_ITEMS: ILostItem[] = [
@@ -132,6 +133,26 @@ export default function SearchLostItems() {
     setSelectedCategory("");
     setDate(undefined);
   }, []);
+
+  // Mock function to handle search
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!searchTerm.trim()) {
+      toast.error("Please enter a search term");
+      return;
+    }
+
+    // This would be replaced with your actual search logic
+    toast.promise(
+      // Replace this with your actual API call
+      new Promise((resolve) => setTimeout(resolve, 1000)),
+      {
+        loading: "Searching for items...",
+        success: "Results found!",
+        error: "Error searching for items",
+      }
+    );
+  };
 
   return (
     <div className="space-y-8">
