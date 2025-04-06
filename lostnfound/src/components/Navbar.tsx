@@ -3,26 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import {
-  NavigationMenu,
-  NavigationMenuContent,
-  NavigationMenuItem,
-  NavigationMenuLink,
-  NavigationMenuList,
-  NavigationMenuTrigger,
-} from "@/components/ui/navigation-menu";
-import {
-  Search,
-  Menu,
-  X,
-  LogIn,
-  LogOut,
-  User,
-  Search as SearchIcon,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
 import { useSession, signOut } from "next-auth/react";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,191 +13,153 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Menu,
+  X,
+  Search,
+  ChevronDown,
+  User,
+  LogOut,
+  Settings,
+} from "lucide-react";
 import Image from "next/image";
 
-// Custom navigation menu style without the dark background
-const customNavStyle = cn(
-  "group inline-flex h-9 w-max items-center justify-center rounded-md px-4 py-2 text-sm font-medium",
-  "text-white hover:text-[#FFD166] transition-colors",
-  "focus:outline-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#FFD166]"
-);
-
 export default function Navbar() {
-  const pathname = usePathname();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { data: session, status } = useSession();
-  const isLoading = status === "loading";
-  const isAuthenticated = status === "authenticated" && session?.user;
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const pathname = usePathname();
 
-  const toggleMenu = () => {
-    setIsMenuOpen(!isMenuOpen);
+  // Helper function to determine if a link is active
+  const isActive = (path: string) => {
+    if (path === "/" && pathname === "/") return true;
+    if (path !== "/" && pathname?.startsWith(path)) return true;
+    return false;
   };
-
-  const isLinkActive = (path: string) => {
-    return pathname === path;
-  };
-
-  // Get first name from Google profile
-  const firstName = session?.user?.name?.split(" ")[0] || "";
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-[#333333] bg-[#121212]/95 backdrop-blur supports-[backdrop-filter]:bg-[#121212]/80">
+    <nav className="bg-[#121212] border-b border-[#333333] sticky top-0 z-40">
       <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-[auto_1fr_auto] items-center h-16 w-full">
-          {/* Logo - Left */}
-          <div className="flex items-center">
+        <div className="flex justify-between h-16">
+          {/* Logo and brand */}
+          <div className="flex-shrink-0 flex items-center">
             <Link href="/" className="flex items-center gap-2">
-              <div className="rounded-full bg-[#FFD166] p-1.5">
-                <SearchIcon
-                  className="h-5 w-5 text-[#121212]"
-                  strokeWidth={2.5}
-                />
+              <div className="rounded-full bg-[#FFD166] p-1">
+                <Search className="h-4 w-4 text-[#121212]" strokeWidth={2.5} />
               </div>
-              <span className="text-xl font-bold text-white">
+              <span className="text-lg font-bold text-white">
                 Lost<span className="text-[#FFD166]">&</span>Found
               </span>
             </Link>
           </div>
 
-          {/* Nav Links - Center */}
-          <div className="hidden md:flex justify-center items-center">
-            <NavigationMenu>
-              <NavigationMenuList className="gap-6">
-                <NavigationMenuItem>
-                  <Link href="/" legacyBehavior passHref>
-                    <NavigationMenuLink
-                      className={cn(
-                        customNavStyle,
-                        isLinkActive("/") && "text-[#FFD166]"
-                      )}
-                    >
-                      Home
-                    </NavigationMenuLink>
+          {/* Desktop navigation */}
+          <div className="hidden md:flex md:items-center md:space-x-4">
+            <Link
+              href="/all-items"
+              className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                isActive("/all-items")
+                  ? "text-[#FFD166]"
+                  : "text-gray-300 hover:text-white"
+              }`}
+            >
+              Browse Items
+            </Link>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className={`px-3 py-2 text-sm font-medium transition-colors ${
+                    isActive("/report-lost") || isActive("/report-found")
+                      ? "text-[#FFD166]"
+                      : "text-gray-300 hover:text-white"
+                  }`}
+                >
+                  Report Item
+                  <ChevronDown className="ml-2 h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem asChild>
+                  <Link href="/report-lost" className="cursor-pointer">
+                    Report Lost Item
                   </Link>
-                </NavigationMenuItem>
-
-                <NavigationMenuItem>
-                  <NavigationMenuTrigger className={customNavStyle}>
-                    Items
-                  </NavigationMenuTrigger>
-                  <NavigationMenuContent>
-                    <div className="grid w-[400px] gap-3 p-4 bg-[#1A1A1A] border-[#333333]">
-                      <Link
-                        href="/lost-items"
-                        className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-[#2A2A2A] focus:bg-[#2A2A2A]"
-                      >
-                        <div className="text-sm font-medium leading-none text-white">
-                          Lost Items
-                        </div>
-                        <p className="line-clamp-2 text-sm leading-snug text-gray-400">
-                          Browse all reported lost items
-                        </p>
-                      </Link>
-                      <Link
-                        href="/found-items"
-                        className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-[#2A2A2A] focus:bg-[#2A2A2A]"
-                      >
-                        <div className="text-sm font-medium leading-none text-white">
-                          Found Items
-                        </div>
-                        <p className="line-clamp-2 text-sm leading-snug text-gray-400">
-                          Browse items that have been found
-                        </p>
-                      </Link>
-                      <Link
-                        href="/report-lost"
-                        className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-[#2A2A2A] focus:bg-[#2A2A2A]"
-                      >
-                        <div className="text-sm font-medium leading-none text-white">
-                          Report Lost Item
-                        </div>
-                        <p className="line-clamp-2 text-sm leading-snug text-gray-400">
-                          File a report for your lost item
-                        </p>
-                      </Link>
-                    </div>
-                  </NavigationMenuContent>
-                </NavigationMenuItem>
-
-                <NavigationMenuItem>
-                  <Link href="/about" legacyBehavior passHref>
-                    <NavigationMenuLink
-                      className={cn(
-                        customNavStyle,
-                        isLinkActive("/about") && "text-[#FFD166]"
-                      )}
-                    >
-                      About
-                    </NavigationMenuLink>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/report-found" className="cursor-pointer">
+                    Report Found Item
                   </Link>
-                </NavigationMenuItem>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
-                <NavigationMenuItem>
-                  <Link href="/contact" legacyBehavior passHref>
-                    <NavigationMenuLink
-                      className={cn(
-                        customNavStyle,
-                        isLinkActive("/contact") && "text-[#FFD166]"
-                      )}
-                    >
-                      Contact
-                    </NavigationMenuLink>
-                  </Link>
-                </NavigationMenuItem>
-              </NavigationMenuList>
-            </NavigationMenu>
-          </div>
+            <Link
+              href="/about"
+              className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                isActive("/about")
+                  ? "text-[#FFD166]"
+                  : "text-gray-300 hover:text-white"
+              }`}
+            >
+              About
+            </Link>
 
-          {/* Buttons - Right */}
-          <div className="flex items-center justify-end gap-2">
-            <div className="hidden md:flex items-center gap-2">
-              {isLoading ? (
-                <div className="w-24 h-9 bg-[#1A1A1A] animate-pulse rounded-md"></div>
-              ) : isAuthenticated ? (
+            <div className="ml-2">
+              {status === "loading" ? (
+                <div className="h-8 w-8 rounded-full bg-[#2A2A2A] animate-pulse"></div>
+              ) : session ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
-                      variant="outline"
-                      size="sm"
-                      className="border-[#333333] text-white hover:bg-[#2A2A2A] hover:text-white flex gap-2 items-center"
+                      variant="ghost"
+                      className="relative rounded-full h-8 w-8 p-0 overflow-hidden"
                     >
-                      {session.user.image ? (
-                        <div className="relative w-6 h-6 rounded-full overflow-hidden">
-                          <Image
-                            src={session.user.image}
-                            alt={session.user.name || "User"}
-                            fill
-                            className="object-cover"
-                          />
-                        </div>
+                      {session.user?.image ? (
+                        <Image
+                          src={session.user.image}
+                          alt={session.user.name || "User"}
+                          fill
+                          className="object-cover"
+                        />
                       ) : (
-                        <User className="h-4 w-4" />
+                        <div className="h-full w-full flex items-center justify-center bg-[#2A2A2A]">
+                          <User className="h-4 w-4 text-gray-400" />
+                        </div>
                       )}
-                      <span>{firstName}</span>
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent
-                    align="end"
-                    className="bg-[#1A1A1A] border-[#333333] text-white"
-                  >
-                    <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                    <DropdownMenuSeparator className="bg-[#333333]" />
-                    <DropdownMenuItem
-                      className="focus:bg-[#2A2A2A] focus:text-white cursor-pointer"
-                      asChild
-                    >
-                      <Link href="/dashboard">Dashboard</Link>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuLabel className="flex flex-col">
+                      <span>{session.user?.name}</span>
+                      <span className="text-xs text-gray-500 truncate">
+                        {session.user?.email}
+                      </span>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link href="/dashboard" className="cursor-pointer">
+                        <User className="mr-2 h-4 w-4" />
+                        <span>Dashboard</span>
+                      </Link>
                     </DropdownMenuItem>
-                    <DropdownMenuItem
-                      className="focus:bg-[#2A2A2A] focus:text-white cursor-pointer"
-                      asChild
-                    >
-                      <Link href="/profile">Profile</Link>
+                    <DropdownMenuItem asChild>
+                      <Link href="/profile" className="cursor-pointer">
+                        <Settings className="mr-2 h-4 w-4" />
+                        <span>Profile Settings</span>
+                      </Link>
                     </DropdownMenuItem>
-                    <DropdownMenuSeparator className="bg-[#333333]" />
+                    {session.user?.role === "admin" && (
+                      <DropdownMenuItem asChild>
+                        <Link href="/admin" className="cursor-pointer">
+                          <Settings className="mr-2 h-4 w-4" />
+                          <span>Admin Panel</span>
+                        </Link>
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuSeparator />
                     <DropdownMenuItem
-                      onClick={() => signOut({ callbackUrl: "/" })}
-                      className="text-red-400 focus:bg-[#2A2A2A] focus:text-red-400 cursor-pointer"
+                      onClick={() => signOut()}
+                      className="text-red-500 focus:text-red-500 cursor-pointer"
                     >
                       <LogOut className="mr-2 h-4 w-4" />
                       <span>Sign Out</span>
@@ -223,145 +167,161 @@ export default function Navbar() {
                   </DropdownMenuContent>
                 </DropdownMenu>
               ) : (
-                <Button
-                  asChild
-                  variant="outline"
-                  size="sm"
-                  className="border-[#333333] text-white hover:bg-[#2A2A2A] hover:text-white"
-                >
-                  <Link href="/sign">
-                    <LogIn className="mr-2 h-4 w-4" />
-                    Sign In
-                  </Link>
+                <Button asChild size="sm" className="ml-2">
+                  <Link href="/sign">Sign In</Link>
                 </Button>
               )}
             </div>
+          </div>
 
-            {/* Mobile Menu Button */}
+          {/* Mobile menu button */}
+          <div className="flex items-center md:hidden">
             <button
-              className="md:hidden text-white p-2"
-              onClick={toggleMenu}
-              aria-label="Toggle menu"
+              type="button"
+              className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-white focus:outline-none"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
-              {isMenuOpen ? (
-                <X className="h-6 w-6" />
+              <span className="sr-only">Open main menu</span>
+              {mobileMenuOpen ? (
+                <X className="block h-6 w-6" aria-hidden="true" />
               ) : (
-                <Menu className="h-6 w-6" />
+                <Menu className="block h-6 w-6" aria-hidden="true" />
               )}
             </button>
           </div>
         </div>
       </div>
 
-      {/* Mobile Navigation */}
-      {isMenuOpen && (
-        <div className="md:hidden absolute z-50 top-16 left-0 right-0 bg-[#121212] border-b border-[#333333] p-4 space-y-4">
+      {/* Mobile menu */}
+      <div
+        className={`${
+          mobileMenuOpen ? "block" : "hidden"
+        } md:hidden border-t border-[#333333]`}
+      >
+        <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
           <Link
-            href="/"
-            className={`block p-2 text-sm ${isLinkActive("/") ? "text-[#FFD166]" : "text-white"} hover:text-[#FFD166]`}
-            onClick={() => setIsMenuOpen(false)}
+            href="/all-items"
+            className={`block px-3 py-2 rounded-md text-base font-medium ${
+              isActive("/all-items")
+                ? "text-[#FFD166]"
+                : "text-gray-300 hover:text-white"
+            }`}
+            onClick={() => setMobileMenuOpen(false)}
           >
-            Home
-          </Link>
-          <Link
-            href="/lost-items"
-            className={`block p-2 text-sm ${isLinkActive("/lost-items") ? "text-[#FFD166]" : "text-white"} hover:text-[#FFD166]`}
-            onClick={() => setIsMenuOpen(false)}
-          >
-            Lost Items
-          </Link>
-          <Link
-            href="/found-items"
-            className={`block p-2 text-sm ${isLinkActive("/found-items") ? "text-[#FFD166]" : "text-white"} hover:text-[#FFD166]`}
-            onClick={() => setIsMenuOpen(false)}
-          >
-            Found Items
+            Browse Items
           </Link>
           <Link
             href="/report-lost"
-            className={`block p-2 text-sm ${isLinkActive("/report-lost") ? "text-[#FFD166]" : "text-white"} hover:text-[#FFD166]`}
-            onClick={() => setIsMenuOpen(false)}
+            className={`block px-3 py-2 rounded-md text-base font-medium ${
+              isActive("/report-lost")
+                ? "text-[#FFD166]"
+                : "text-gray-300 hover:text-white"
+            }`}
+            onClick={() => setMobileMenuOpen(false)}
           >
             Report Lost Item
           </Link>
           <Link
+            href="/report-found"
+            className={`block px-3 py-2 rounded-md text-base font-medium ${
+              isActive("/report-found")
+                ? "text-[#FFD166]"
+                : "text-gray-300 hover:text-white"
+            }`}
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            Report Found Item
+          </Link>
+          <Link
             href="/about"
-            className={`block p-2 text-sm ${isLinkActive("/about") ? "text-[#FFD166]" : "text-white"} hover:text-[#FFD166]`}
-            onClick={() => setIsMenuOpen(false)}
+            className={`block px-3 py-2 rounded-md text-base font-medium ${
+              isActive("/about")
+                ? "text-[#FFD166]"
+                : "text-gray-300 hover:text-white"
+            }`}
+            onClick={() => setMobileMenuOpen(false)}
           >
             About
           </Link>
-          <Link
-            href="/contact"
-            className={`block p-2 text-sm ${isLinkActive("/contact") ? "text-[#FFD166]" : "text-white"} hover:text-[#FFD166]`}
-            onClick={() => setIsMenuOpen(false)}
-          >
-            Contact
-          </Link>
 
-          <div className="pt-2 border-t border-[#333333]">
-            {isAuthenticated ? (
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2 px-2 py-3">
-                  {session.user.image ? (
-                    <div className="relative w-8 h-8 rounded-full overflow-hidden">
+          {session ? (
+            <>
+              <div className="pt-4 pb-3 border-t border-[#333333]">
+                <div className="flex items-center px-3">
+                  <div className="flex-shrink-0 relative h-10 w-10 rounded-full overflow-hidden bg-[#2A2A2A]">
+                    {session.user?.image ? (
                       <Image
                         src={session.user.image}
-                        alt={session.user.name || "User"}
+                        alt={session.user?.name || "User"}
                         fill
                         className="object-cover"
                       />
+                    ) : (
+                      <div className="h-full w-full flex items-center justify-center">
+                        <User className="h-6 w-6 text-gray-400" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="ml-3">
+                    <div className="text-base font-medium text-white">
+                      {session.user?.name}
                     </div>
-                  ) : (
-                    <User className="h-5 w-5 text-white" />
-                  )}
-                  <div className="text-sm font-medium text-white">
-                    {firstName}
+                    <div className="text-sm font-medium text-gray-400">
+                      {session.user?.email}
+                    </div>
                   </div>
                 </div>
-                <Link
-                  href="/dashboard"
-                  className="block p-2 text-sm text-white hover:text-[#FFD166]"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Dashboard
-                </Link>
-                <Link
-                  href="/profile"
-                  className="block p-2 text-sm text-white hover:text-[#FFD166]"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Profile
-                </Link>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-[#333333] text-red-400 hover:bg-[#2A2A2A] w-full mt-2"
-                  onClick={() => {
-                    signOut({ callbackUrl: "/" });
-                    setIsMenuOpen(false);
-                  }}
-                >
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Sign Out
-                </Button>
+                <div className="mt-3 px-2 space-y-1">
+                  <Link
+                    href="/dashboard"
+                    className="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Dashboard
+                  </Link>
+                  <Link
+                    href="/profile"
+                    className="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Profile Settings
+                  </Link>
+                  {session.user?.role === "admin" && (
+                    <Link
+                      href="/admin"
+                      className="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:text-white"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      Admin Panel
+                    </Link>
+                  )}
+                  <button
+                    className="w-full text-left block px-3 py-2 rounded-md text-base font-medium text-red-500 hover:text-red-400"
+                    onClick={() => {
+                      signOut();
+                      setMobileMenuOpen(false);
+                    }}
+                  >
+                    Sign Out
+                  </button>
+                </div>
               </div>
-            ) : (
-              <Button
-                asChild
-                variant="outline"
-                size="sm"
-                className="border-[#333333] text-white hover:bg-[#2A2A2A] w-full"
-              >
-                <Link href="/sign">
-                  <LogIn className="mr-2 h-4 w-4" />
+            </>
+          ) : (
+            <div className="pt-4 pb-3 border-t border-[#333333]">
+              <div className="px-2">
+                <Link
+                  href="/sign"
+                  className="block w-full text-center px-3 py-2 rounded-md text-base font-medium bg-[#FFD166] text-[#121212]"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
                   Sign In
                 </Link>
-              </Button>
-            )}
-          </div>
+              </div>
+            </div>
+          )}
         </div>
-      )}
-    </header>
+      </div>
+    </nav>
   );
 }

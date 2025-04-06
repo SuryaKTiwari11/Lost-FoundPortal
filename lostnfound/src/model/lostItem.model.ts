@@ -1,29 +1,25 @@
 import mongoose, { Schema, Document } from "mongoose";
 import { User } from "./user.model";
 
-// Define the interface for the Found Item document
-export interface FoundItem extends Document {
+// Define the interface for the Lost Item document
+export interface LostItem extends Document {
   itemName: string;
   description: string;
   category: string;
-  foundLocation: string;
-  foundDate: Date;
-  currentHoldingLocation?: string;
+  lastLocation: string;
+  dateLost: Date;
   imageURL?: string;
   reportedBy: mongoose.Types.ObjectId | User;
   contactEmail: string;
   contactPhone?: string;
-  status: "found" | "claimed" | "verified" | "rejected";
-  isVerified: boolean;
-  claimedBy?: mongoose.Types.ObjectId | User;
-  claimRequestIds: mongoose.Types.ObjectId[] | User[];
-  matchedWithLostItem?: mongoose.Types.ObjectId;
-  claimedAt?: Date;
+  status: "lost" | "found" | "claimed" | "foundReported" | "pending_claim";
+  foundReports: mongoose.Types.ObjectId[];
+  matchedWithFoundItem?: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }
 
-// Categories for found items
+// Categories for lost items (same as found items for consistency)
 export const ITEM_CATEGORIES = [
   "Electronics",
   "Books",
@@ -36,7 +32,7 @@ export const ITEM_CATEGORIES = [
 ];
 
 // Define the schema
-const foundItemSchema = new Schema<FoundItem>(
+const lostItemSchema = new Schema<LostItem>(
   {
     // Basic Details
     itemName: {
@@ -61,21 +57,15 @@ const foundItemSchema = new Schema<FoundItem>(
     },
 
     // Location & Time
-    foundLocation: {
+    lastLocation: {
       type: String,
-      required: [true, "Location where item was found is required"],
+      required: [true, "Last known location is required"],
       trim: true,
       maxlength: [200, "Location cannot exceed 200 characters"],
     },
-    foundDate: {
+    dateLost: {
       type: Date,
-      required: [true, "Date when item was found is required"],
-      default: Date.now,
-    },
-    currentHoldingLocation: {
-      type: String,
-      trim: true,
-      maxlength: [200, "Current holding location cannot exceed 200 characters"],
+      required: [true, "Date when item was lost is required"],
     },
 
     // Media
@@ -110,35 +100,24 @@ const foundItemSchema = new Schema<FoundItem>(
       match: [/^[0-9+\-\s()]{10,15}$/, "Please provide a valid phone number"],
     },
 
-    // Status & Metadata
+    // Status & Related Reports
     status: {
       type: String,
       enum: {
-        values: ["found", "claimed", "verified", "rejected"],
+        values: ["lost", "found", "claimed", "foundReported", "pending_claim"],
         message: "Invalid status value",
       },
-      default: "found",
+      default: "lost",
     },
-    isVerified: {
-      type: Boolean,
-      default: false,
-    },
-    claimedBy: {
-      type: Schema.Types.ObjectId,
-      ref: "User",
-    },
-    claimRequestIds: [
+    foundReports: [
       {
         type: Schema.Types.ObjectId,
-        ref: "User",
+        ref: "FoundReport",
       },
     ],
-    matchedWithLostItem: {
+    matchedWithFoundItem: {
       type: Schema.Types.ObjectId,
-      ref: "LostItem",
-    },
-    claimedAt: {
-      type: Date,
+      ref: "FoundItem",
     },
   },
   {
@@ -147,5 +126,5 @@ const foundItemSchema = new Schema<FoundItem>(
 );
 
 // Create or use existing model
-export default mongoose.models.FoundItem ||
-  mongoose.model<FoundItem>("FoundItem", foundItemSchema);
+export default mongoose.models.LostItem ||
+  mongoose.model<LostItem>("LostItem", lostItemSchema);

@@ -126,6 +126,22 @@
     background: rgb(var(--background-rgb));
     background-color: #121212;
   }
+  *:focus {
+    outline: none !important;
+    box-shadow: none !important;
+  }
+
+  button:focus,
+  a:focus {
+    outline: none !important;
+    box-shadow: none !important;
+  }
+
+  :focus {
+    outline: none !important;
+    box-shadow: none !important;
+    -webkit-tap-highlight-color: transparent;
+  }
 }
 
 @tailwind base;
