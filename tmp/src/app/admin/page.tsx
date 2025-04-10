@@ -24,6 +24,7 @@ import {
   CardHeader,
   CardTitle,
   CardDescription,
+  CardFooter,
 } from "@/components/ui/card";
 import {
   AlertCircle,
@@ -39,6 +40,12 @@ import {
   CheckCircle,
   Clock,
   Tag,
+  BarChart3,
+  Users,
+  Settings,
+  Upload,
+  Image as ImageIcon,
+  Filter,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
@@ -54,7 +61,26 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { ScrollArea } from "@/components/ui/scroll-area";
+
+// Import admin components
+import DashboardAnalytics from "@/components/admin/DashboardAnalytics";
+import BatchVerification from "@/components/admin/BatchVerification";
+import ItemComparisonView from "@/components/admin/ItemComparisonView";
+import VerificationSteps from "@/components/admin/VerificationSteps";
+import EnhancedEmailTemplates from "@/components/admin/EnhancedEmailTemplates";
+import EmailTemplates from "@/components/admin/EmailTemplates";
+import ImageGallery from "@/components/admin/ImageGallery";
 
 export default function AdminPage() {
   const router = useRouter();
@@ -72,11 +98,19 @@ export default function AdminPage() {
     rejected: 0,
     total: 0,
   });
+  const [selectedItemForVerification, setSelectedItemForVerification] =
+    useState<string | null>(null);
+  const [selectedItemDetails, setSelectedItemDetails] =
+    useState<FoundItem | null>(null);
+  const [selectedItemForComparison, setSelectedItemForComparison] = useState<
+    string | null
+  >(null);
+  const [showComparisonDialog, setShowComparisonDialog] = useState(false);
 
   // Track initialization and tab changes
   const initialized = useRef(false);
   const prevTabState = useRef({ tab: activeTab, subTab: activeSubTab });
-  
+
   // API hooks with executeOnMount: false to prevent automatic fetching
   const {
     data: itemsData,
@@ -132,9 +166,12 @@ export default function AdminPage() {
   const [potentialMatches, setPotentialMatches] = useState<ItemMatch[]>([]);
 
   // Controlled fetch functions with memoization
-  const fetchItemsMemoized = useCallback((status: string) => {
-    fetchItems(status);
-  }, [fetchItems]);
+  const fetchItemsMemoized = useCallback(
+    (status: string) => {
+      fetchItems(status);
+    },
+    [fetchItems]
+  );
 
   const fetchClaimsMemoized = useCallback(() => {
     fetchClaims();
@@ -165,9 +202,12 @@ export default function AdminPage() {
   useEffect(() => {
     if (initialized.current) {
       const { tab: prevTab, subTab: prevSubTab } = prevTabState.current;
-      
+
       // Only fetch if tab/subtab actually changed
-      if (prevTab !== activeTab || (activeTab === "items" && prevSubTab !== activeSubTab)) {
+      if (
+        prevTab !== activeTab ||
+        (activeTab === "items" && prevSubTab !== activeSubTab)
+      ) {
         if (activeTab === "items") {
           fetchItemsMemoized(activeSubTab);
         } else if (activeTab === "claims") {
@@ -178,12 +218,18 @@ export default function AdminPage() {
             fetchItemsMemoized("verified");
           }
         }
-        
+
         // Store current values for next comparison
         prevTabState.current = { tab: activeTab, subTab: activeSubTab };
       }
     }
-  }, [activeTab, activeSubTab, fetchItemsMemoized, fetchClaimsMemoized, fetchLostItemsMemoized]);
+  }, [
+    activeTab,
+    activeSubTab,
+    fetchItemsMemoized,
+    fetchClaimsMemoized,
+    fetchLostItemsMemoized,
+  ]);
 
   // Update items when data changes
   useEffect(() => {
@@ -409,83 +455,553 @@ export default function AdminPage() {
     }
   };
 
+  // Handle item selection for verification
+  const handleSelectItemForVerification = (itemId: string) => {
+    const selectedItem = items.find((item) => item._id === itemId);
+    if (selectedItem) {
+      setSelectedItemDetails(selectedItem);
+      setSelectedItemForVerification(itemId);
+    }
+  };
+
+  // Handle item verification update
+  const handleVerificationUpdated = async (
+    verificationSteps: FoundItem["verificationSteps"],
+    isVerified: boolean
+  ) => {
+    // Update local item with new verification data
+    if (selectedItemDetails && selectedItemForVerification) {
+      const updatedItem = {
+        ...selectedItemDetails,
+        verificationSteps,
+        isVerified,
+      };
+      setSelectedItemDetails(updatedItem);
+
+      // Refresh the items list to show updated status
+      if (activeTab === "items") {
+        fetchItemsMemoized(activeSubTab);
+      }
+    }
+  };
+
+  // Handle batch verification completion
+  const handleBatchVerificationCompleted = async () => {
+    toast.success("Batch verification completed successfully");
+    // Refresh the items list
+    if (activeTab === "items") {
+      fetchItemsMemoized(activeSubTab);
+    }
+  };
+
+  // Handle item selection for comparison
+  const handleCompareItem = (matchId: string) => {
+    setSelectedItemForComparison(matchId);
+    setShowComparisonDialog(true);
+  };
+
+  // Handle image upload completion
+  const handleImageUploadComplete = () => {
+    toast.success("Images uploaded successfully");
+    fetchItemsMemoized(activeSubTab);
+  };
+
+  // Handle email template selection
+  const handleSelectEmailTemplate = (template: any) => {
+    setEmailSubject(template.subject);
+    setEmailBody(template.body);
+    setShowEmailModal(true);
+  };
+
   return (
-    <div className="min-h-screen bg-[#121212] text-white">
-      <div className="container mx-auto px-4 py-10">
-        <FadeIn>
-          <header className="mb-8">
-            <h1 className="text-4xl font-bold text-[#FFD166]">
-              Admin Dashboard
-            </h1>
-            <p className="text-gray-400 mt-2">Manage lost and found items</p>
-          </header>
-        </FadeIn>
+    <div className="min-h-screen bg-[#121212]">
+      <div className="container mx-auto py-8 px-4 max-w-7xl">
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold tracking-tight text-white">
+            Admin Dashboard
+          </h1>
+          <div className="flex items-center space-x-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={refreshData}
+              className="hidden sm:flex border-[#333333] text-gray-300 hover:text-white"
+            >
+              <RefreshCw className="h-4 w-4 mr-2" /> Refresh
+            </Button>
+          </div>
+        </div>
 
         {/* Stats Cards */}
-        <StaggerContainer className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <StaggerItem>
-            <Card className="bg-[#1E1E1E] border-[#333333] hover:border-[#FFD166] transition-colors">
-              <CardContent className="p-6 flex items-center justify-between">
-                <div>
-                  <p className="text-lg font-medium text-gray-400">Pending</p>
-                  <p className="text-3xl font-bold mt-2">{itemStats.pending}</p>
-                </div>
-                <div className="h-12 w-12 rounded-full bg-blue-900/30 flex items-center justify-center">
-                  <Clock className="h-6 w-6 text-blue-200" />
-                </div>
-              </CardContent>
-            </Card>
-          </StaggerItem>
-
-          <StaggerItem>
-            <Card className="bg-[#1E1E1E] border-[#333333] hover:border-[#FFD166] transition-colors">
-              <CardContent className="p-6 flex items-center justify-between">
-                <div>
-                  <p className="text-lg font-medium text-gray-400">Verified</p>
-                  <p className="text-3xl font-bold mt-2">
+        <div className="mb-8">
+          <StaggerContainer className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 w-full">
+            <StaggerItem>
+              <Card className="bg-[#1A1A1A] border-[#333333] shadow-sm hover:shadow-md transition-shadow">
+                <CardHeader className="pb-2 space-y-0">
+                  <CardTitle className="text-sm font-medium text-gray-400">
+                    Pending Items
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-white">
+                    {itemStats.pending}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Waiting for verification
+                  </p>
+                </CardContent>
+              </Card>
+            </StaggerItem>
+            <StaggerItem>
+              <Card className="bg-[#1A1A1A] border-[#333333] shadow-sm hover:shadow-md transition-shadow">
+                <CardHeader className="pb-2 space-y-0">
+                  <CardTitle className="text-sm font-medium text-gray-400">
+                    Verified Items
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-white">
                     {itemStats.verified}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Ready for claiming
                   </p>
-                </div>
-                <div className="h-12 w-12 rounded-full bg-purple-900/30 flex items-center justify-center">
-                  <CheckCircle className="h-6 w-6 text-purple-200" />
-                </div>
-              </CardContent>
-            </Card>
-          </StaggerItem>
-
-          <StaggerItem>
-            <Card className="bg-[#1E1E1E] border-[#333333] hover:border-[#FFD166] transition-colors">
-              <CardContent className="p-6 flex items-center justify-between">
-                <div>
-                  <p className="text-lg font-medium text-gray-400">Claimed</p>
-                  <p className="text-3xl font-bold mt-2">{itemStats.claimed}</p>
-                </div>
-                <div className="h-12 w-12 rounded-full bg-green-900/30 flex items-center justify-center">
-                  <Check className="h-6 w-6 text-green-200" />
-                </div>
-              </CardContent>
-            </Card>
-          </StaggerItem>
-
-          <StaggerItem>
-            <Card className="bg-[#1E1E1E] border-[#333333] hover:border-[#FFD166] transition-colors">
-              <CardContent className="p-6 flex items-center justify-between">
-                <div>
-                  <p className="text-lg font-medium text-gray-400">
+                </CardContent>
+              </Card>
+            </StaggerItem>
+            <StaggerItem>
+              <Card className="bg-[#1A1A1A] border-[#333333] shadow-sm hover:shadow-md transition-shadow">
+                <CardHeader className="pb-2 space-y-0">
+                  <CardTitle className="text-sm font-medium text-gray-400">
+                    Claimed Items
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-white">
+                    {itemStats.claimed}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Successfully returned
+                  </p>
+                </CardContent>
+              </Card>
+            </StaggerItem>
+            <StaggerItem>
+              <Card className="bg-[#1A1A1A] border-[#333333] shadow-sm hover:shadow-md transition-shadow">
+                <CardHeader className="pb-2 space-y-0">
+                  <CardTitle className="text-sm font-medium text-gray-400">
                     Total Items
-                  </p>
-                  <p className="text-3xl font-bold mt-2">{itemStats.total}</p>
-                </div>
-                <div className="h-12 w-12 rounded-full bg-gray-700/50 flex items-center justify-center">
-                  <Tag className="h-6 w-6 text-gray-300" />
-                </div>
-              </CardContent>
-            </Card>
-          </StaggerItem>
-        </StaggerContainer>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-white">
+                    {itemStats.total}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">All system items</p>
+                </CardContent>
+              </Card>
+            </StaggerItem>
+          </StaggerContainer>
+        </div>
 
-        {/* Rest of component remains the same */}
-        {/* ... */}
+        <div className="rounded-lg bg-[#1A1A1A] p-1 border border-[#333333] shadow-sm mb-6">
+          <Tabs
+            value={activeTab}
+            onValueChange={setActiveTab}
+            className="space-y-6"
+          >
+            <TabsList className="grid grid-cols-5 h-11 p-1 w-full rounded bg-[#242424]">
+              <TabsTrigger
+                value="items"
+                className="flex items-center text-gray-300 data-[state=active]:bg-[#2A2A2A] data-[state=active]:text-white"
+              >
+                <Tag className="h-4 w-4 mr-2" /> Items
+              </TabsTrigger>
+              <TabsTrigger
+                value="claims"
+                className="flex items-center text-gray-300 data-[state=active]:bg-[#2A2A2A] data-[state=active]:text-white"
+              >
+                <Check className="h-4 w-4 mr-2" /> Claims
+              </TabsTrigger>
+              <TabsTrigger
+                value="matches"
+                className="flex items-center text-gray-300 data-[state=active]:bg-[#2A2A2A] data-[state=active]:text-white"
+              >
+                <Info className="h-4 w-4 mr-2" /> Matches
+              </TabsTrigger>
+              <TabsTrigger
+                value="analytics"
+                className="flex items-center text-gray-300 data-[state=active]:bg-[#2A2A2A] data-[state=active]:text-white"
+              >
+                <BarChart3 className="h-4 w-4 mr-2" /> Analytics
+              </TabsTrigger>
+              <TabsTrigger
+                value="tools"
+                className="flex items-center text-gray-300 data-[state=active]:bg-[#2A2A2A] data-[state=active]:text-white"
+              >
+                <Settings className="h-4 w-4 mr-2" /> Admin Tools
+              </TabsTrigger>
+            </TabsList>
+
+            <div className="p-4 pt-2">
+              {/* Items Tab */}
+              <TabsContent value="items" className="space-y-5 mt-0">
+                <div className="flex flex-col sm:flex-row justify-between space-y-3 sm:space-y-0 sm:space-x-3">
+                  <Tabs
+                    value={activeSubTab}
+                    onValueChange={setActiveSubTab}
+                    className="w-full sm:w-auto"
+                  >
+                    <TabsList className="grid grid-cols-4 w-full sm:w-auto bg-[#242424]">
+                      <TabsTrigger
+                        value="pending"
+                        className="text-gray-300 data-[state=active]:bg-[#2A2A2A] data-[state=active]:text-white"
+                      >
+                        <Clock className="h-4 w-4 mr-2" /> Pending
+                      </TabsTrigger>
+                      <TabsTrigger
+                        value="verified"
+                        className="text-gray-300 data-[state=active]:bg-[#2A2A2A] data-[state=active]:text-white"
+                      >
+                        <CheckCircle className="h-4 w-4 mr-2" /> Verified
+                      </TabsTrigger>
+                      <TabsTrigger
+                        value="claimed"
+                        className="text-gray-300 data-[state=active]:bg-[#2A2A2A] data-[state=active]:text-white"
+                      >
+                        <Check className="h-4 w-4 mr-2" /> Claimed
+                      </TabsTrigger>
+                      <TabsTrigger
+                        value="rejected"
+                        className="text-gray-300 data-[state=active]:bg-[#2A2A2A] data-[state=active]:text-white"
+                      >
+                        <X className="h-4 w-4 mr-2" /> Rejected
+                      </TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+
+                  <div className="flex space-x-3">
+                    <div className="relative flex-1">
+                      <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
+                      <Input
+                        type="search"
+                        placeholder="Search items..."
+                        className="pl-8 bg-[#2A2A2A] border-[#333333] text-white"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                      />
+                    </div>
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowEmailModal(true)}
+                      disabled={activeSubTab === "pending"}
+                      className="border-[#333333] text-gray-300 hover:text-white"
+                    >
+                      <Mail className="h-4 w-4 mr-2" />
+                      Send Email
+                    </Button>
+                  </div>
+                </div>
+
+                {isLoadingItems ? (
+                  <div className="flex justify-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin text-[#FFD166]" />
+                  </div>
+                ) : filteredItems.length === 0 ? (
+                  <div className="bg-[#1A1A1A] rounded-lg border border-[#333333] shadow-sm p-10 text-center">
+                    <div className="flex flex-col items-center justify-center space-y-3">
+                      <AlertCircle className="h-10 w-10 text-gray-500" />
+                      <h3 className="text-lg font-semibold text-white">
+                        No items found
+                      </h3>
+                      <p className="text-sm text-gray-400 max-w-md mx-auto">
+                        {searchQuery
+                          ? "Try adjusting your search query"
+                          : `There are no ${activeSubTab} items`}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="rounded-md border border-[#333333] overflow-hidden shadow-sm">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-[#242424] hover:bg-[#2A2A2A] border-[#333333]">
+                          <TableHead className="w-12 text-gray-400">
+                            <input
+                              type="checkbox"
+                              className="h-4 w-4 rounded border-[#333333]"
+                              checked={
+                                selectedItems.length === filteredItems.length &&
+                                filteredItems.length > 0
+                              }
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedItems(
+                                    filteredItems.map((item) => item._id)
+                                  );
+                                } else {
+                                  setSelectedItems([]);
+                                }
+                              }}
+                            />
+                          </TableHead>
+                          <TableHead className="text-gray-400">
+                            Item Name
+                          </TableHead>
+                          <TableHead className="text-gray-400">
+                            Category
+                          </TableHead>
+                          <TableHead className="text-gray-400">
+                            Location
+                          </TableHead>
+                          <TableHead className="text-gray-400">
+                            Date Found
+                          </TableHead>
+                          <TableHead className="text-gray-400">
+                            Status
+                          </TableHead>
+                          <TableHead className="text-right text-gray-400">
+                            Actions
+                          </TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredItems.map((item) => (
+                          <TableRow
+                            key={item._id}
+                            className="border-[#333333] hover:bg-[#242424]"
+                          >
+                            <TableCell>
+                              <input
+                                type="checkbox"
+                                className="h-4 w-4 rounded border-[#333333]"
+                                checked={selectedItems.includes(item._id)}
+                                onChange={() => toggleItemSelection(item._id)}
+                              />
+                            </TableCell>
+                            <TableCell className="font-medium text-white">
+                              <div className="flex items-center space-x-2">
+                                {item.images && item.images.length > 0 ? (
+                                  <div className="h-8 w-8 rounded-md overflow-hidden relative">
+                                    <Image
+                                      src={item.images[0]}
+                                      alt={item.itemName}
+                                      fill
+                                      className="object-cover"
+                                    />
+                                  </div>
+                                ) : (
+                                  <div className="h-8 w-8 rounded-md bg-[#242424] flex items-center justify-center">
+                                    <Tag className="h-4 w-4 text-gray-500" />
+                                  </div>
+                                )}
+                                <span>{item.itemName}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-gray-300">
+                              {item.category}
+                            </TableCell>
+                            <TableCell className="text-gray-300">
+                              {item.foundLocation}
+                            </TableCell>
+                            <TableCell className="text-gray-300">
+                              {new Date(item.foundDate).toLocaleDateString()}
+                            </TableCell>
+                            <TableCell>
+                              <Badge
+                                variant={
+                                  item.status === "pending"
+                                    ? "outline"
+                                    : item.status === "verified"
+                                      ? "default"
+                                      : item.status === "claimed"
+                                        ? "success"
+                                        : "destructive"
+                                }
+                                className={
+                                  item.status === "verified"
+                                    ? "bg-green-600/20 text-green-400 border-green-500/30"
+                                    : item.status === "claimed"
+                                      ? "bg-blue-600/20 text-blue-400 border-blue-500/30"
+                                      : item.status === "pending"
+                                        ? "bg-[#333333] text-gray-300 border-[#444444]"
+                                        : "bg-red-900/30 text-red-400 border-red-700/30"
+                                }
+                              >
+                                {item.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end space-x-2">
+                                {activeSubTab === "pending" && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() =>
+                                      handleSelectItemForVerification(item._id)
+                                    }
+                                    className="border-green-700/30 text-green-400 hover:text-green-300 hover:bg-green-600/10 hover:border-green-700/50"
+                                  >
+                                    Verify
+                                  </Button>
+                                )}
+                                {activeSubTab === "pending" && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() =>
+                                      handleUpdateItemStatus(
+                                        item._id,
+                                        "rejected"
+                                      )
+                                    }
+                                    className="border-red-700/30 text-red-400 hover:text-red-300 hover:bg-red-600/10 hover:border-red-700/50"
+                                  >
+                                    Reject
+                                  </Button>
+                                )}
+                                {activeSubTab === "verified" && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() =>
+                                      handleUpdateItemStatus(
+                                        item._id,
+                                        "pending"
+                                      )
+                                    }
+                                    className="border-[#333333] text-gray-300"
+                                  >
+                                    Unpublish
+                                  </Button>
+                                )}
+                                <Link href={`/found-items/${item._id}`}>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="hover:bg-[#242424] text-gray-300"
+                                  >
+                                    <ChevronRight className="h-4 w-4" />
+                                  </Button>
+                                </Link>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </TabsContent>
+
+              {/* Analytics Tab */}
+              <TabsContent value="analytics" className="space-y-5 mt-0">
+                <Card className="bg-[#1A1A1A] border-[#333333] shadow-sm overflow-hidden">
+                  <CardHeader className="bg-[#1A1A1A] border-b border-[#333333]">
+                    <CardTitle className="text-white">
+                      Dashboard Analytics
+                    </CardTitle>
+                    <CardDescription className="text-gray-400">
+                      View trends and statistics about lost and found items
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-6">
+                    <DashboardAnalytics />
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Other tabs content... */}
+
+              {/* Admin Tools Tab */}
+              <TabsContent value="tools" className="space-y-6 mt-0">
+                <Tabs defaultValue="batch-verification" className="w-full">
+                  <TabsList className="grid grid-cols-3 mb-6 bg-[#242424]">
+                    <TabsTrigger
+                      value="batch-verification"
+                      className="text-gray-300 data-[state=active]:bg-[#2A2A2A] data-[state=active]:text-white"
+                    >
+                      Batch Verification
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="email-templates"
+                      className="text-gray-300 data-[state=active]:bg-[#2A2A2A] data-[state=active]:text-white"
+                    >
+                      Email Templates
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="image-gallery"
+                      className="text-gray-300 data-[state=active]:bg-[#2A2A2A] data-[state=active]:text-white"
+                    >
+                      Image Gallery
+                    </TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent
+                    value="batch-verification"
+                    className="space-y-5 mt-0"
+                  >
+                    <Card className="bg-[#1A1A1A] border-[#333333] shadow-sm">
+                      <CardHeader className="border-b border-[#333333]">
+                        <CardTitle className="text-white">
+                          Batch Verification Tool
+                        </CardTitle>
+                        <CardDescription className="text-gray-400">
+                          Efficiently verify multiple items at once using AI
+                          assistance
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="p-6">
+                        <BatchVerification
+                          onItemsVerified={handleBatchVerificationCompleted}
+                        />
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+
+                  {/* Other tool tab contents... */}
+                </Tabs>
+              </TabsContent>
+            </div>
+          </Tabs>
+        </div>
+
+        {/* Verification Dialog */}
+        {selectedItemForVerification && selectedItemDetails && (
+          <Dialog
+            open={!!selectedItemForVerification}
+            onOpenChange={(open) => {
+              if (!open) setSelectedItemForVerification(null);
+            }}
+          >
+            <DialogContent className="sm:max-w-4xl bg-[#1A1A1A] border-[#333333] text-white">
+              <DialogHeader>
+                <DialogTitle>Item Verification</DialogTitle>
+                <DialogDescription className="text-gray-400">
+                  Complete the verification steps for{" "}
+                  {selectedItemDetails.itemName}
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="grid gap-4 py-4">
+                <VerificationSteps
+                  itemId={selectedItemForVerification}
+                  verificationSteps={selectedItemDetails.verificationSteps}
+                  isVerified={selectedItemDetails.isVerified}
+                  onVerificationUpdated={handleVerificationUpdated}
+                />
+              </div>
+
+              <DialogFooter>
+                <Button onClick={() => setSelectedItemForVerification(null)}>
+                  Close
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
+
+        {/* Other dialogs... */}
       </div>
     </div>
   );

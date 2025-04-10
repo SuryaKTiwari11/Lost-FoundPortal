@@ -34,6 +34,7 @@ export interface BaseItem {
   category: string;
   description: string;
   imageURL?: string;
+  images?: string[]; // Added support for multiple images
   status: string;
   reportedBy: {
     _id?: string;
@@ -56,18 +57,61 @@ export interface LostItem extends BaseItem {
   foundReports?: any[];
   matchedWithFoundItem?: string;
   status: "lost" | "found" | "claimed" | "foundReported" | "pending_claim";
+  documents?: DocumentVerification[]; // Added support for document verification
 }
 
+// Enhanced Found Item with verification steps
 export interface FoundItem extends BaseItem {
   foundLocation: string;
   foundDate: Date;
   currentHoldingLocation?: string;
   isVerified: boolean;
+  verificationSteps?: {
+    photoVerified?: boolean;
+    photoVerifiedAt?: Date;
+    photoVerifiedBy?: string | User;
+    photoVerificationNotes?: string;
+
+    descriptionVerified?: boolean;
+    descriptionVerifiedAt?: Date;
+    descriptionVerifiedBy?: string | User;
+    descriptionVerificationNotes?: string;
+
+    ownershipProofVerified?: boolean;
+    ownershipProofVerifiedAt?: Date;
+    ownershipProofVerifiedBy?: string | User;
+    ownershipProofVerificationNotes?: string;
+  };
   claimedBy?: string | User;
   claimRequestIds?: string[];
   matchedWithLostItem?: string;
   claimedAt?: Date;
   status: "found" | "claimed" | "verified" | "rejected";
+  verificationHistory?: VerificationAction[];
+  documents?: DocumentVerification[];
+}
+
+// Verification Action for history tracking
+export interface VerificationAction {
+  timestamp: Date;
+  action: string;
+  performedBy: string | User;
+  notes?: string;
+}
+
+// Document verification type
+export interface DocumentVerification {
+  _id?: string;
+  documentType: "receipt" | "photo" | "description" | "other";
+  documentURL: string;
+  name: string;
+  description?: string;
+  isVerified?: boolean;
+  verifiedBy?: string | User;
+  verifiedAt?: Date;
+  feedback?: string;
+  uploadedBy: string | User;
+  uploadedAt: Date;
 }
 
 export interface ClaimRequest {
@@ -82,6 +126,7 @@ export interface ClaimRequest {
   processedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
+  documents?: DocumentVerification[];
 }
 
 export interface ItemMatch {
@@ -90,6 +135,16 @@ export interface ItemMatch {
   foundItem: FoundItem;
   score: number;
   id: string;
+  matchType?: "ai" | "manual" | "basic";
+  matchDetails?: {
+    categoryMatch?: boolean;
+    descriptionSimilarity?: number;
+    locationProximity?: number;
+    dateProximity?: number;
+    visualSimilarity?: number;
+  };
+  createdAt?: Date;
+  createdBy?: string | User;
 }
 
 export interface FoundReport {
@@ -108,6 +163,86 @@ export interface FoundReport {
   updatedAt: Date;
 }
 
+// Email Template for improved communication
+export interface EmailTemplate {
+  _id: string;
+  name: string;
+  subject: string;
+  body: string;
+  type: "notification" | "match" | "claim" | "verification" | "other";
+  createdBy: string | User;
+  isDefault: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Communication History for tracking all communications
+export interface CommunicationHistory {
+  _id?: string;
+  userId: string;
+  itemId?: string;
+  type: "email" | "notification" | "system" | "other";
+  subject: string;
+  body: string;
+  status: "sent" | "failed" | "pending";
+  metadata?: {
+    emailTemplate?: string;
+    ipAddress?: string;
+    userAgent?: string;
+    deliveryStatus?: string;
+    openedAt?: Date;
+    clickedAt?: Date;
+  };
+  sentAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Analytics types for dashboard
+export interface AnalyticsData {
+  itemStats: ItemStats;
+  recoveryRates: RecoveryRateData;
+  locationData: LocationDataPoint[];
+  categoryData: CategoryDataPoint[];
+  timelineData: TimelineDataPoint[];
+  processingTimes: ProcessingTimeData;
+}
+
+export interface RecoveryRateData {
+  overall: number; // Percentage of lost items that were found and claimed
+  byCategory: { [category: string]: number };
+  byTimeframe: { [timeframe: string]: number }; // daily, weekly, monthly
+}
+
+export interface LocationDataPoint {
+  location: string;
+  lostCount: number;
+  foundCount: number;
+  latitude?: number;
+  longitude?: number;
+}
+
+export interface CategoryDataPoint {
+  category: string;
+  lostCount: number;
+  foundCount: number;
+  recoveryRate: number;
+}
+
+export interface TimelineDataPoint {
+  date: string;
+  lostItems: number;
+  foundItems: number;
+  claimedItems: number;
+}
+
+export interface ProcessingTimeData {
+  averageVerificationTime: number; // in hours
+  averageClaimProcessingTime: number; // in hours
+  averageTimeToMatch: number; // in hours
+  averageTimeToRecover: number; // in days
+}
+
 // Form Data Types
 export interface FoundItemFormData {
   itemName: string;
@@ -117,6 +252,7 @@ export interface FoundItemFormData {
   foundDate: Date;
   currentHoldingLocation?: string;
   imageURL?: string;
+  images?: File[]; // For multiple image uploads
   contactEmail: string;
   contactPhone?: string;
 }
@@ -129,9 +265,11 @@ export interface LostItemFormData {
   lastSeenDate: Date;
   ownerName?: string;
   imageURL?: string;
+  images?: File[]; // For multiple image uploads
   contactEmail: string;
   contactPhone?: string;
   reward?: string;
+  documents?: File[]; // For document uploads
 }
 
 export interface FoundReportData {
@@ -159,6 +297,14 @@ export interface ClaimItemData {
   userId: string;
   claimReason: string;
   proofDescription: string;
+  documents?: File[]; // For document uploads
+}
+
+// Batch operations types
+export interface BatchOperationData {
+  itemIds: string[];
+  operation: "verify" | "reject" | "delete" | "notify";
+  operationData?: any;
 }
 
 // Admin Dashboard Types
@@ -182,203 +328,4 @@ export const ITEM_CATEGORIES = [
   "Others",
 ];
 
-// Mock Data for Development
-export const MOCK_FOUND_ITEMS: FoundItem[] = [
-  {
-    _id: "f1",
-    itemName: "Blue Wallet",
-    category: "Accessories",
-    foundLocation: "Student Center",
-    foundDate: new Date(2023, 4, 14),
-    description:
-      "Blue leather wallet with some cash and ID cards. Found on a table near the entrance.",
-    imageURL: "",
-    status: "found",
-    isVerified: true,
-    currentHoldingLocation: "Admin Office, Room 123",
-    reportedBy: {
-      name: "Alex Johnson",
-      email: "alex@example.com",
-    },
-    createdAt: new Date(2023, 4, 14),
-  },
-  {
-    _id: "f2",
-    itemName: "iPhone 13",
-    category: "Electronics",
-    foundLocation: "Library",
-    foundDate: new Date(2023, 5, 20),
-    description:
-      "Black iPhone 13 with a cracked screen protector. Found on a study desk.",
-    imageURL: "",
-    status: "found",
-    isVerified: true,
-    currentHoldingLocation: "Security Office",
-    reportedBy: {
-      name: "Maria Garcia",
-      email: "maria@example.com",
-    },
-    createdAt: new Date(2023, 5, 20),
-  },
-  {
-    _id: "f3",
-    itemName: "Textbook",
-    category: "Books",
-    foundLocation: "Lecture Hall B",
-    foundDate: new Date(2023, 6, 5),
-    description:
-      "Introduction to Computer Science textbook. Found under a chair.",
-    imageURL: "",
-    status: "found",
-    isVerified: false,
-    reportedBy: {
-      name: "John Smith",
-      email: "john@example.com",
-    },
-    createdAt: new Date(2023, 6, 5),
-  },
-  {
-    _id: "f4",
-    itemName: "Water Bottle",
-    category: "Others",
-    foundLocation: "Gym",
-    foundDate: new Date(2023, 6, 10),
-    description: "Blue metal water bottle with a university logo.",
-    imageURL: "",
-    status: "claimed",
-    isVerified: true,
-    claimedAt: new Date(2023, 6, 15),
-    reportedBy: {
-      name: "Sarah Lee",
-      email: "sarah@example.com",
-    },
-    createdAt: new Date(2023, 6, 10),
-  },
-  {
-    _id: "f5",
-    itemName: "Student ID Card",
-    category: "ID Cards",
-    foundLocation: "Cafeteria",
-    foundDate: new Date(2023, 6, 12),
-    description: "Student ID card for Emily Johnson.",
-    imageURL: "",
-    status: "found",
-    isVerified: true,
-    currentHoldingLocation: "Admin Office",
-    reportedBy: {
-      name: "David Wilson",
-      email: "david@example.com",
-    },
-    createdAt: new Date(2023, 6, 12),
-  },
-];
-
-export const MOCK_LOST_ITEMS: LostItem[] = [
-  {
-    _id: "l1",
-    itemName: "Red Backpack",
-    category: "Accessories",
-    lostLocation: "Library",
-    lostDate: new Date(2023, 5, 10),
-    description: "Red Jansport backpack with laptop and notebooks inside.",
-    status: "lost",
-    reportedBy: {
-      name: "Emma Thompson",
-      email: "emma@example.com",
-    },
-    createdAt: new Date(2023, 5, 10),
-  },
-  {
-    _id: "l2",
-    itemName: "Glasses",
-    category: "Accessories",
-    lostLocation: "Science Building",
-    lostDate: new Date(2023, 5, 15),
-    description: "Black-framed prescription glasses in a blue case.",
-    status: "lost",
-    reportedBy: {
-      name: "Michael Brown",
-      email: "michael@example.com",
-    },
-    createdAt: new Date(2023, 5, 15),
-  },
-  {
-    _id: "l3",
-    itemName: "Laptop Charger",
-    category: "Electronics",
-    lostLocation: "Student Center",
-    lostDate: new Date(2023, 6, 2),
-    description: "MacBook Pro charger with a small tear in the cable.",
-    status: "lost",
-    reportedBy: {
-      name: "Sophia Martinez",
-      email: "sophia@example.com",
-    },
-    createdAt: new Date(2023, 6, 2),
-  },
-];
-
-export const MOCK_CLAIM_REQUESTS: ClaimRequest[] = [
-  {
-    _id: "c1",
-    item: MOCK_FOUND_ITEMS[0],
-    user: {
-      _id: "u1",
-      name: "James Wilson",
-      email: "james@example.com",
-      role: "user",
-      lastLogin: new Date(),
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    },
-    proofOfOwnership:
-      "The wallet contains my student ID, two credit cards (Visa ending in 4582 and Mastercard ending in 7890), and about $25 in cash. There's also a photo of my dog inside.",
-    status: "pending",
-    createdAt: new Date(2023, 5, 16),
-    updatedAt: new Date(2023, 5, 16),
-  },
-  {
-    _id: "c2",
-    item: MOCK_FOUND_ITEMS[1],
-    user: {
-      _id: "u2",
-      name: "Olivia Davis",
-      email: "olivia@example.com",
-      role: "user",
-      lastLogin: new Date(),
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    },
-    proofOfOwnership:
-      "The iPhone has a lock screen wallpaper of a sunset beach. The phone case has a small chip in the bottom right corner. The phone is locked with Face ID and the passcode is 123456.",
-    contactPhone: "555-123-4567",
-    status: "pending",
-    createdAt: new Date(2023, 5, 22),
-    updatedAt: new Date(2023, 5, 22),
-  },
-];
-
-export const MOCK_ITEM_MATCHES: ItemMatch[] = [
-  {
-    _id: "m1",
-    id: "m1",
-    lostItem: MOCK_LOST_ITEMS[0],
-    foundItem: MOCK_FOUND_ITEMS[2],
-    score: 5,
-  },
-  {
-    _id: "m2",
-    id: "m2",
-    lostItem: MOCK_LOST_ITEMS[2],
-    foundItem: MOCK_FOUND_ITEMS[1],
-    score: 4,
-  },
-];
-
-export const MOCK_ITEM_STATS: ItemStats = {
-  pending: 2,
-  verified: 3,
-  claimed: 1,
-  rejected: 0,
-  total: 6,
-};
+// Remove mock data section since we're implementing real data

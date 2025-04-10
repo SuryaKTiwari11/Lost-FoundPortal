@@ -1,13 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import Spinner from "@/components/ui/Spinner";
 import { Search, ArrowRight, MapPin, InfoIcon } from "lucide-react";
-import { Badge } from "@/components/ui/badge"
+import { Badge } from "@/components/ui/badge";
 import {
   Carousel,
   CarouselContent,
@@ -16,36 +17,42 @@ import {
   CarouselPrevious,
 } from "@/components/ui/carousel";
 
+interface LostItem {
+  _id: string;
+  itemName: string;
+  category: string;
+  lostLocation: string;
+  lostDate: string;
+  images: string[];
+}
+
 export default function Home() {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);
+  const [recentItems, setRecentItems] = useState<LostItem[]>([]);
+  const [itemsLoading, setItemsLoading] = useState(true);
 
-  const recentItems = [
-    {
-      id: 1,
-      title: "iPhone 13 Pro",
-      category: "Electronics",
-      location: "Main Library",
-      date: "2023-05-15",
-      image: "/images/iphone.jpg", // Replace with actual image path
-    },
-    {
-      id: 2,
-      title: "Black Leather Wallet",
-      category: "Accessories",
-      location: "Student Center",
-      date: "2023-05-14",
-      image: "/images/wallet.jpg", // Replace with actual image path
-    },
-    {
-      id: 3,
-      title: "Student ID Card",
-      category: "Documents",
-      location: "Cafeteria",
-      date: "2023-05-13",
-      image: "/images/id-card.jpg", // Replace with actual image path
-    },
-  ];
+  // Fetch recent lost items from the database
+  useEffect(() => {
+    async function fetchRecentLostItems() {
+      try {
+        const response = await fetch("/api/lost-items?limit=6&sort=recent");
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.items) {
+            setRecentItems(data.items);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching recent lost items:", error);
+      } finally {
+        setItemsLoading(false);
+      }
+    }
+
+    fetchRecentLostItems();
+  }, []);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,6 +62,16 @@ export default function Home() {
       setLoading(false);
       window.location.href = `/search?query=${searchQuery}`;
     }, 1000);
+  };
+
+  // Format date to be more readable
+  const formatDate = (dateString: string) => {
+    const options: Intl.DateTimeFormatOptions = {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    };
+    return new Date(dateString).toLocaleDateString(undefined, options);
   };
 
   return (
@@ -117,45 +134,78 @@ export default function Home() {
             </Button>
           </div>
 
-          <Carousel className="w-full">
-            <CarouselContent>
-              {recentItems.map((item) => (
-                <CarouselItem
-                  key={item.id}
-                  className="md:basis-1/2 lg:basis-1/3"
-                >
-                  <Card className="h-full">
-                    <div className="aspect-square relative overflow-hidden rounded-t-xl">
-                      <div className="absolute inset-0 bg-gradient-to-t from-[#121212] to-transparent opacity-50"></div>
-                      <div className="h-48 bg-[#2A2A2A] flex items-center justify-center">
-                        <InfoIcon className="h-16 w-16 text-[#333333]" />
+          {itemsLoading ? (
+            <div className="flex justify-center items-center py-16">
+              <Spinner size="lg" />
+            </div>
+          ) : recentItems.length > 0 ? (
+            <Carousel className="w-full">
+              <CarouselContent>
+                {recentItems.map((item) => (
+                  <CarouselItem
+                    key={item._id}
+                    className="md:basis-1/2 lg:basis-1/3"
+                  >
+                    <Card className="h-full">
+                      <div className="aspect-square relative overflow-hidden rounded-t-xl">
+                        {item.images && item.images.length > 0 ? (
+                          <Image
+                            src={item.images[0]}
+                            alt={item.itemName}
+                            layout="fill"
+                            objectFit="cover"
+                            className="transition-transform hover:scale-105"
+                            onError={(e) => {
+                              // Fallback for image loading errors
+                              const target = e.target as HTMLImageElement;
+                              target.onerror = null;
+                              target.src =
+                                "https://placehold.co/400x400/2A2A2A/AAAAAA?text=No+Image";
+                            }}
+                          />
+                        ) : (
+                          <div className="h-full bg-[#2A2A2A] flex items-center justify-center">
+                            <InfoIcon className="h-16 w-16 text-[#333333]" />
+                          </div>
+                        )}
                       </div>
-                    </div>
-                    <CardHeader>
-                      <div className="flex justify-between items-start">
-                        <CardTitle>{item.title}</CardTitle>
-                        <Badge className="bg-[#FFD166] text-[#121212]">
-                          {item.category}
-                        </Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex items-center text-gray-400 mb-2">
-                        <MapPin className="h-4 w-4 mr-1" />
-                        <span className="text-sm">{item.location}</span>
-                      </div>
-                      <div className="text-sm text-gray-400">
-                        Lost on: {new Date(item.date).toLocaleDateString()}
-                      </div>
-                      <Button className="w-full mt-4">View Details</Button>
-                    </CardContent>
-                  </Card>
-                </CarouselItem>
-              ))}
-            </CarouselContent>
-            <CarouselPrevious className="-left-5 bg-[#1A1A1A] border-[#333333]" />
-            <CarouselNext className="-right-5 bg-[#1A1A1A] border-[#333333]" />
-          </Carousel>
+                      <CardHeader>
+                        <div className="flex justify-between items-start">
+                          <CardTitle>{item.itemName}</CardTitle>
+                          <Badge className="bg-[#FFD166] text-[#121212]">
+                            {item.category}
+                          </Badge>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="flex items-center text-gray-400 mb-2">
+                          <MapPin className="h-4 w-4 mr-1" />
+                          <span className="text-sm">{item.lostLocation}</span>
+                        </div>
+                        <div className="text-sm text-gray-400">
+                          Lost on: {formatDate(item.lostDate)}
+                        </div>
+                        <Button className="w-full mt-4" asChild>
+                          <Link href={`/lost-items/${item._id}`}>
+                            View Details
+                          </Link>
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+              <CarouselPrevious className="-left-5 bg-[#1A1A1A] border-[#333333]" />
+              <CarouselNext className="-right-5 bg-[#1A1A1A] border-[#333333]" />
+            </Carousel>
+          ) : (
+            <div className="text-center py-12">
+              <p className="text-gray-400 mb-4">No lost items reported yet.</p>
+              <Button asChild>
+                <Link href="/report-lost">Report a Lost Item</Link>
+              </Button>
+            </div>
+          )}
         </div>
       </section>
 
@@ -208,7 +258,7 @@ export default function Home() {
           </div>
 
           <Button className="mt-12" asChild>
-            <Link href="/signup">Get Started Now</Link>
+            <Link href="/sign/up">Get Started Now</Link>
           </Button>
         </div>
       </section>

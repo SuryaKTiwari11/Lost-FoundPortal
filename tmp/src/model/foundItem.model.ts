@@ -10,15 +10,39 @@ export interface FoundItem extends Document {
   foundDate: Date;
   currentHoldingLocation?: string;
   imageURL?: string;
+  images?: string[]; // Multiple images support
   reportedBy: mongoose.Types.ObjectId | User;
   contactEmail: string;
   contactPhone?: string;
   status: "found" | "claimed" | "verified" | "rejected";
   isVerified: boolean;
+  verificationSteps?: {
+    // Multi-stage verification
+    photoVerified?: boolean;
+    photoVerifiedAt?: Date;
+    photoVerifiedBy?: mongoose.Types.ObjectId | User;
+    photoVerificationNotes?: string;
+
+    descriptionVerified?: boolean;
+    descriptionVerifiedAt?: Date;
+    descriptionVerifiedBy?: mongoose.Types.ObjectId | User;
+    descriptionVerificationNotes?: string;
+
+    ownershipProofVerified?: boolean;
+    ownershipProofVerifiedAt?: Date;
+    ownershipProofVerifiedBy?: mongoose.Types.ObjectId | User;
+    ownershipProofVerificationNotes?: string;
+  };
   claimedBy?: mongoose.Types.ObjectId | User;
   claimRequestIds: mongoose.Types.ObjectId[] | User[];
   matchedWithLostItem?: mongoose.Types.ObjectId;
   claimedAt?: Date;
+  verificationHistory?: {
+    timestamp: Date;
+    action: string;
+    performedBy: mongoose.Types.ObjectId | User;
+    notes?: string;
+  }[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -91,6 +115,21 @@ const foundItemSchema = new Schema<FoundItem>(
       },
     },
 
+    // Multiple images
+    images: [
+      {
+        type: String,
+        trim: true,
+        validate: {
+          validator: function (v: string) {
+            // Basic URL validation
+            return !v || /^(https?|ftp):\/\/[^\s/$.?#].[^\s]*$/i.test(v);
+          },
+          message: "Invalid image URL format",
+        },
+      },
+    ],
+
     // Reporter Info
     reportedBy: {
       type: Schema.Types.ObjectId,
@@ -123,6 +162,34 @@ const foundItemSchema = new Schema<FoundItem>(
       type: Boolean,
       default: false,
     },
+
+    // Multi-stage verification
+    verificationSteps: {
+      photoVerified: Boolean,
+      photoVerifiedAt: Date,
+      photoVerifiedBy: {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+      },
+      photoVerificationNotes: String,
+
+      descriptionVerified: Boolean,
+      descriptionVerifiedAt: Date,
+      descriptionVerifiedBy: {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+      },
+      descriptionVerificationNotes: String,
+
+      ownershipProofVerified: Boolean,
+      ownershipProofVerifiedAt: Date,
+      ownershipProofVerifiedBy: {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+      },
+      ownershipProofVerificationNotes: String,
+    },
+
     claimedBy: {
       type: Schema.Types.ObjectId,
       ref: "User",
@@ -140,6 +207,26 @@ const foundItemSchema = new Schema<FoundItem>(
     claimedAt: {
       type: Date,
     },
+
+    // Verification history
+    verificationHistory: [
+      {
+        timestamp: {
+          type: Date,
+          default: Date.now,
+        },
+        action: {
+          type: String,
+          required: true,
+        },
+        performedBy: {
+          type: Schema.Types.ObjectId,
+          ref: "User",
+          required: true,
+        },
+        notes: String,
+      },
+    ],
   },
   {
     timestamps: true, // Automatically adds createdAt and updatedAt
