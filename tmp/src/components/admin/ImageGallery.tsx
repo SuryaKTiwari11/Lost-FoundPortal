@@ -284,23 +284,26 @@ export default function ImageGallery({
     setIsUploading(true);
 
     try {
-      const formData = new FormData();
-      selectedFiles.forEach((file) => {
-        formData.append("images", file);
+      // Create array of promises for uploading each file
+      const uploadPromises = selectedFiles.map((file) => {
+        return adminAPI.uploadImage(itemId, file);
       });
 
-      // Mock API upload
-      // In a real implementation, you would use your API service
-      // const response = await adminAPI.uploadImages(formData);
+      // Wait for all uploads to complete
+      const results = await Promise.all(uploadPromises);
 
-      // Simulate successful upload
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      // Check how many succeeded
+      const successCount = results.filter((res) => res.success).length;
 
-      toast.success(`${selectedFiles.length} image(s) uploaded successfully`);
-      setSelectedFiles([]);
-      loadImages(); // Refresh image list
-      if (onUploadComplete) {
-        onUploadComplete();
+      if (successCount > 0) {
+        toast.success(`${successCount} image(s) uploaded successfully`);
+        setSelectedFiles([]);
+        loadImages(); // Refresh image list
+        if (onUploadComplete) {
+          onUploadComplete();
+        }
+      } else {
+        toast.error("Failed to upload images");
       }
     } catch (error) {
       console.error("Upload failed:", error);
@@ -315,23 +318,16 @@ export default function ImageGallery({
     setIsLoading(true);
 
     try {
-      // Mock API call
-      // In a real implementation, you would use your API service
-      // const response = await adminAPI.getImages();
+      // Use real API to get images
+      const response = await adminAPI.getItemImages(itemId, itemType);
 
-      // Simulate loading images
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      // Mock response
-      const mockImages = [
-        "https://images.unsplash.com/photo-1582481031633-5183fa0ddf95?q=80&w=200",
-        "https://images.unsplash.com/photo-1603796846097-bee99e4a601f?q=80&w=200",
-        "https://images.unsplash.com/photo-1563919328614-54be51adff2e?q=80&w=200",
-        "https://images.unsplash.com/photo-1579802063886-824657a8f7f5?q=80&w=200",
-        "https://images.unsplash.com/photo-1602067520746-3def5b4f8f0f?q=80&w=200",
-      ];
-
-      setUploadedImages(mockImages);
+      if (response.success && response.data) {
+        setUploadedImages(response.data.map((img) => img.url));
+      } else {
+        toast.error(
+          "Failed to load images: " + (response.error || "Unknown error")
+        );
+      }
     } catch (error) {
       console.error("Failed to load images:", error);
       toast.error("Failed to load images");
@@ -343,16 +339,26 @@ export default function ImageGallery({
   // Delete image
   const deleteImage = async (imageUrl: string) => {
     try {
-      // Mock API call
-      // In a real implementation, you would use your API service
-      // await adminAPI.deleteImage(imageUrl);
+      // Find the image ID from URL
+      const image = images.find((img) => img.url === imageUrl);
+      if (!image) {
+        toast.error("Image not found");
+        return;
+      }
 
-      // Simulate deletion
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      const response = await adminAPI.deleteItemImage(
+        itemId,
+        itemType,
+        image._id
+      );
 
-      // Remove from state
-      setUploadedImages((prev) => prev.filter((url) => url !== imageUrl));
-      toast.success("Image deleted successfully");
+      if (response.success) {
+        // Remove from state
+        setUploadedImages((prev) => prev.filter((url) => url !== imageUrl));
+        toast.success("Image deleted successfully");
+      } else {
+        toast.error(response.error || "Failed to delete image");
+      }
     } catch (error) {
       console.error("Failed to delete image:", error);
       toast.error("Failed to delete image");

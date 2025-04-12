@@ -1,18 +1,24 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { foundItemSchema, FoundItemFormData } from "@/schemas/foundItemSchema";
-import { ITEM_CATEGORIES } from "@/model/foundItem.model";
+import { ITEM_CATEGORIES } from "@/constants/categories";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
+import { ImagePlus, X, Loader2, Check } from "lucide-react";
 
 export default function ReportFoundItemForm() {
   const { data: session, status } = useSession();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
   const {
@@ -21,6 +27,7 @@ export default function ReportFoundItemForm() {
     reset,
     formState: { errors },
     setValue,
+    watch,
   } = useForm<FoundItemFormData>({
     resolver: zodResolver(foundItemSchema),
     defaultValues: {
@@ -28,12 +35,23 @@ export default function ReportFoundItemForm() {
     },
   });
 
+  const watchImageURL = watch("imageURL");
+
   // Fetch user profile to pre-fill contact information
   useEffect(() => {
     if (status === "authenticated" && session?.user?.email) {
       fetchUserProfile();
     }
   }, [status, session]);
+
+  // Cleanup preview URL when component unmounts
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
 
   async function fetchUserProfile() {
     try {
@@ -62,6 +80,69 @@ export default function ReportFoundItemForm() {
     }
   }
 
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Check file size (limit to 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image is too large. Please choose an image under 5MB.");
+      return;
+    }
+
+    // Check file type
+    if (!file.type.startsWith("image/")) {
+      toast.error("Selected file is not an image.");
+      return;
+    }
+
+    setSelectedImage(file);
+
+    // Create preview URL
+    const objectUrl = URL.createObjectURL(file);
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
+    setPreviewUrl(objectUrl);
+
+    // Clear imageURL field if using upload
+    setValue("imageURL", "");
+  };
+
+  const removeSelectedImage = () => {
+    setSelectedImage(null);
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+      setPreviewUrl(null);
+    }
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const uploadImage = async (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Upload failed with status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log("Image upload response:", data);
+      return data.url; // Return the URL of the uploaded image
+    } catch (error) {
+      console.error("Image upload failed:", error);
+      throw error;
+    }
+  };
+
   const onSubmit = async (data: FoundItemFormData) => {
     if (!session?.user?.id) {
       toast.error("You must be logged in to report a found item");
@@ -70,20 +151,39 @@ export default function ReportFoundItemForm() {
 
     try {
       setIsSubmitting(true);
+      setUploadProgress(10);
 
-      // Add user information to the form data
+      // Upload image if selected
+      let imageURL = data.imageURL;
+      if (selectedImage) {
+        setUploadProgress(30);
+        try {
+          imageURL = await uploadImage(selectedImage);
+          setUploadProgress(70);
+        } catch (error) {
+          toast.error("Image upload failed. Please try again.");
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
+      // Add user information and image to the form data
       const formData = {
         ...data,
+        status: "pending", // Set initial status to pending
+        isVerified: false, // Not verified until admin approves
+        images: imageURL ? [imageURL] : [], // Store image URL in an array
         reportedBy: session.user.id,
-        // Include additional profile data if needed
+        // Include additional profile data
         userName: session.user.name,
         userEmail: session.user.email,
       };
 
       // Debug the form data being sent
       console.log("Submitting form data:", formData);
+      setUploadProgress(80);
 
-      const response = await fetch("/api/items/report-found", {
+      const response = await fetch("/api/found-items/create", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -93,14 +193,16 @@ export default function ReportFoundItemForm() {
 
       const result = await response.json();
       console.log("API response:", result);
+      setUploadProgress(100);
 
       if (result.success) {
         toast.success("Item reported successfully!");
         reset(); // Clear the form
+        removeSelectedImage(); // Clear any selected image
 
         // Redirect after a short delay to allow the toast to be seen
         setTimeout(() => {
-          router.push("/items/reported");
+          router.push("/dashboard");
         }, 2000);
       } else {
         toast.error(result.error || "Failed to report item");
@@ -238,18 +340,78 @@ export default function ReportFoundItemForm() {
             )}
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-2">Image URL</label>
-            <input
-              {...register("imageURL")}
-              className="w-full p-3 bg-[#2A2A2A] rounded-md border border-gray-700 focus:border-[#FFD166] focus:outline-none"
-              placeholder="https://example.com/image.jpg"
-            />
-            {errors.imageURL && (
-              <p className="mt-1 text-red-500 text-sm">
-                {errors.imageURL.message}
-              </p>
-            )}
+          {/* Image Upload or URL */}
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium mb-2">Item Image</label>
+
+            <div className="flex flex-col gap-4">
+              {/* Upload option */}
+              <div className="flex flex-col">
+                <div className="flex items-center gap-4">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="px-4 py-2 bg-[#333] text-white rounded-md flex items-center gap-2 hover:bg-[#444] transition"
+                  >
+                    <ImagePlus className="w-4 h-4" /> Upload Image
+                  </button>
+                  <span className="text-sm text-gray-400">or</span>
+                </div>
+
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleImageSelect}
+                  accept="image/*"
+                  className="hidden"
+                />
+
+                {/* Image preview */}
+                {previewUrl && (
+                  <div className="mt-4 relative w-full max-w-md">
+                    <div className="relative h-40 rounded-md overflow-hidden">
+                      <Image
+                        src={previewUrl}
+                        alt="Selected image preview"
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={removeSelectedImage}
+                      className="absolute top-2 right-2 bg-black bg-opacity-50 text-white rounded-full p-1 hover:bg-opacity-70 transition"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                    <p className="mt-1 text-sm text-gray-400">
+                      {selectedImage?.name} (
+                      {(selectedImage?.size / 1024 / 1024).toFixed(2)} MB)
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* External URL option */}
+              <div className="flex flex-col">
+                <label className="text-sm text-gray-400 mb-2">
+                  {!selectedImage
+                    ? "Or enter an image URL:"
+                    : "Image URL (ignored when uploading an image):"}
+                </label>
+                <input
+                  {...register("imageURL")}
+                  className={`w-full p-3 bg-[#2A2A2A] rounded-md border border-gray-700 focus:border-[#FFD166] focus:outline-none ${selectedImage ? "opacity-50" : ""}`}
+                  placeholder="https://example.com/image.jpg"
+                  disabled={!!selectedImage}
+                />
+                {errors.imageURL && !selectedImage && (
+                  <p className="mt-1 text-red-500 text-sm">
+                    {errors.imageURL.message}
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Contact Information */}
@@ -294,9 +456,19 @@ export default function ReportFoundItemForm() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="px-6 py-3 bg-[#FFD166] text-black rounded-md font-medium hover:bg-opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-3 bg-[#FFD166] text-black rounded-md font-medium hover:bg-opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
-            {isSubmitting ? "Submitting..." : "Report Found Item"}
+            {isSubmitting ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Submitting... {uploadProgress > 0 && `(${uploadProgress}%)`}
+              </>
+            ) : (
+              <>
+                <Check className="h-4 w-4" />
+                Report Found Item
+              </>
+            )}
           </button>
         </div>
       </form>

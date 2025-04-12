@@ -1,180 +1,111 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/app/api/auth/[...nextauth]/option";
-import dbConnect from "@/lib/dbConnect";
+import { dbConnect } from "@/lib/dbConnect";
 import LostItem from "@/model/lostItem.model";
 
+// GET handler to retrieve a specific lost item by ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
-    const id = params.id;
-    if (!id) {
-      return NextResponse.json(
-        { success: false, error: "Item ID is required" },
-        { status: 400 }
-      );
-    }
-
     await dbConnect();
 
-    const item = await LostItem.findById(id)
-      .populate("reportedBy", "name email image")
-      .populate({
-        path: "foundReports",
-        populate: {
-          path: "foundBy",
-          select: "name email image",
-        },
-      })
-      .populate("matchedWithFoundItem");
+    // Get the ID parameter safely by destructuring from the awaited context
+    const { id } = context.params;
+    
+    const lostItem = await LostItem.findById(id)
+      .populate("reportedBy", "name email username")
+      .lean();
 
-    if (!item) {
+    if (!lostItem) {
       return NextResponse.json(
-        { success: false, error: "Item not found" },
+        { success: false, error: "Lost item not found" },
         { status: 404 }
       );
     }
 
-    return NextResponse.json({ success: true, data: item });
+    return NextResponse.json({ success: true, data: lostItem });
   } catch (error: any) {
-    console.error("Error fetching lost item:", error);
+    console.error(`Error fetching lost item ${context.params.id}:`, error);
     return NextResponse.json(
-      { success: false, error: `Failed to fetch item: ${error.message}` },
+      {
+        success: false,
+        error: error.message || "Failed to fetch lost item",
+      },
       { status: 500 }
     );
   }
 }
 
+// PUT handler to update a lost item
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user) {
-      return NextResponse.json(
-        { success: false, error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-
-    const id = params.id;
-    if (!id) {
-      return NextResponse.json(
-        { success: false, error: "Item ID is required" },
-        { status: 400 }
-      );
-    }
-
-    const body = await request.json();
-
     await dbConnect();
 
-    // Get the item first to check permissions
-    const item = await LostItem.findById(id);
+    // Get the ID parameter safely by destructuring from the awaited context
+    const { id } = context.params;
+    
+    const data = await request.json();
 
-    if (!item) {
+    const updatedItem = await LostItem.findByIdAndUpdate(id, data, {
+      new: true,
+      runValidators: true,
+    });
+
+    if (!updatedItem) {
       return NextResponse.json(
-        { success: false, error: "Item not found" },
+        { success: false, error: "Lost item not found" },
         { status: 404 }
       );
     }
 
-    // Check if user is authorized to update this item
-    if (
-      item.reportedBy.toString() !== session.user.id &&
-      session.user.role !== "admin"
-    ) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "You don't have permission to update this item",
-        },
-        { status: 403 }
-      );
-    }
-
-    // Update the item
-    const updatedItem = await LostItem.findByIdAndUpdate(
-      id,
-      { ...body },
-      { new: true }
-    );
-
-    return NextResponse.json({
-      success: true,
-      message: "Item updated successfully",
-      data: updatedItem,
-    });
-  } catch (error) {
-    console.error("Error updating lost item:", error);
+    return NextResponse.json({ success: true, data: updatedItem });
+  } catch (error: any) {
+    console.error(`Error updating lost item ${context.params.id}:`, error);
     return NextResponse.json(
-      { success: false, error: "Failed to update item" },
+      {
+        success: false,
+        error: error.message || "Failed to update lost item",
+      },
       { status: 500 }
     );
   }
 }
 
+// DELETE handler to remove a lost item
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user) {
-      return NextResponse.json(
-        { success: false, error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-
-    const id = params.id;
-    if (!id) {
-      return NextResponse.json(
-        { success: false, error: "Item ID is required" },
-        { status: 400 }
-      );
-    }
-
     await dbConnect();
 
-    // Get the item first to check permissions
-    const item = await LostItem.findById(id);
+    // Get the ID parameter safely by destructuring from the awaited context
+    const { id } = context.params;
+    
+    const deletedItem = await LostItem.findByIdAndDelete(id);
 
-    if (!item) {
+    if (!deletedItem) {
       return NextResponse.json(
-        { success: false, error: "Item not found" },
+        { success: false, error: "Lost item not found" },
         { status: 404 }
       );
     }
 
-    // Check if user is authorized to delete this item
-    if (
-      item.reportedBy.toString() !== session.user.id &&
-      session.user.role !== "admin"
-    ) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "You don't have permission to delete this item",
-        },
-        { status: 403 }
-      );
-    }
-
-    // Delete the item
-    await LostItem.findByIdAndDelete(id);
-
     return NextResponse.json({
       success: true,
-      message: "Item deleted successfully",
+      message: "Lost item deleted successfully",
     });
-  } catch (error) {
-    console.error("Error deleting lost item:", error);
+  } catch (error: any) {
+    console.error(`Error deleting lost item ${context.params.id}:`, error);
     return NextResponse.json(
-      { success: false, error: "Failed to delete item" },
+      {
+        success: false,
+        error: error.message || "Failed to delete lost item",
+      },
       { status: 500 }
     );
   }

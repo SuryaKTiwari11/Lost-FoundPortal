@@ -6,7 +6,7 @@
 import mongoose from "mongoose";
 
 /**
- * Generates a unique username based on the user's name and email
+ * Generates a deterministic username based on the user's name and email
  *
  * @param name - The user's full name
  * @param email - The user's email address
@@ -22,11 +22,16 @@ export const generateUsername = (name: string, email: string): string => {
   // Take part of the email (before the @) to add uniqueness
   const emailPrefix = email.split("@")[0].replace(/[^a-z0-9]/g, "");
 
-  // Generate a short random suffix (4 characters)
-  const randomSuffix = Math.random().toString(36).substring(2, 6);
+  // Generate a deterministic suffix using parts of the email and name
+  // This avoids using Math.random() which causes hydration errors
+  const nameSuffix = name.length > 0 ? 
+    name.charCodeAt(0).toString().substring(0, 2) : '42';
+  const emailSuffix = email.length > 0 ? 
+    email.charCodeAt(0).toString().substring(0, 2) : '24';
+  const deterministicSuffix = nameSuffix + emailSuffix;
 
-  // Combine parts to create a unique username
-  const username = `${baseUsername}${emailPrefix.substring(0, 5)}${randomSuffix}`;
+  // Combine parts to create a deterministic username
+  const username = `${baseUsername}${emailPrefix.substring(0, 5)}${deterministicSuffix}`;
 
   return username;
 };
@@ -70,8 +75,8 @@ export const generateUniqueUsername = async (
   // Keep checking and regenerating until we find a unique username
   while (await usernameExists(User, username)) {
     counter++;
-    const randomSuffix = Math.random().toString(36).substring(2, 4);
-    username = `${username.substring(0, 15)}${counter}${randomSuffix}`;
+    // Use a deterministic approach with counter instead of Math.random()
+    username = `${username.substring(0, 15)}${counter}${name.length % 10}${email.length % 10}`;
   }
 
   return username;

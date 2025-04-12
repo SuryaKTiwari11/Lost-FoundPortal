@@ -1,3 +1,6 @@
+// Import environment variables at app startup
+import "../lib/load-env";
+
 import Providers from "./providers";
 import Navbar from "@/components/Navbar";
 import "./globals.css";

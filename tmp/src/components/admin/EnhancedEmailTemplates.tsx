@@ -91,6 +91,14 @@ export default function EnhancedEmailTemplates() {
 
   const [testEmailAddress, setTestEmailAddress] = useState("");
   const [sendingEmail, setSendingEmail] = useState(false);
+  const [claimReferenceNumber, setClaimReferenceNumber] = useState("");
+
+  // Generate stable claim reference on client-side only
+  useEffect(() => {
+    setClaimReferenceNumber(
+      "CLAIM-" + Math.floor(10000 + Math.random() * 90000)
+    );
+  }, []);
 
   // Preview with sample data
   const generatePreview = (template: EmailTemplate) => {
@@ -100,7 +108,7 @@ export default function EnhancedEmailTemplates() {
       foundDate: new Date().toLocaleDateString(),
       itemCategory: "Electronics",
       itemDescription: "Black smartphone with cracked screen",
-      claimReference: "CLAIM-" + Math.floor(10000 + Math.random() * 90000),
+      claimReference: claimReferenceNumber || "CLAIM-12345", // Use stable reference
       daysRemaining: "7",
     };
 
@@ -170,8 +178,11 @@ export default function EnhancedEmailTemplates() {
   };
 
   const handleCreateTemplate = () => {
+    // Use stable IDs with incrementing numbers instead of timestamps
+    const newTemplateId = `template-${templates.length + 10}`;
+
     const newTemplate: EmailTemplate = {
-      id: `template-${Date.now()}`,
+      id: newTemplateId,
       name: "New Template",
       subject: "Subject",
       body: "Email body...",
@@ -549,10 +560,7 @@ export default function EnhancedEmailTemplates() {
                                 ) {
                                   setSelectedTemplate({
                                     ...selectedTemplate,
-                                    variables: [
-                                      ...selectedTemplate.variables,
-                                      newVar,
-                                    ],
+                                    variables: [...selectedTemplate, newVar],
                                   });
                                   input.value = "";
                                 }

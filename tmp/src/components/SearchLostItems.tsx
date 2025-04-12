@@ -1,162 +1,138 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import ItemCard from "@/components/ItemCard";
 import { ILostItem } from "@/models/LostItem";
 import { Input } from "@/components/ui/input";
 import { Search, Calendar as CalendarIcon, Tag } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { toast } from "sonner";
 
-// Sample data with local placeholder images
-const SAMPLE_ITEMS: ILostItem[] = [
-  {
-    id: "1",
-    name: "Blue Backpack",
-    description: "Nike backpack with laptop compartment",
-    category: "Bags",
-    location: "Library - Floor 2",
-    date: new Date("2023-08-15").toISOString(),
-    image: "/images/placeholder-bag.jpg", // Replace with local placeholder image
-    status: "lost",
-    contactInfo: "john@example.com",
-  },
-  {
-    id: "2",
-    name: "iPhone 13 Pro",
-    description: "Space gray iPhone with blue case",
-    category: "Electronics",
-    location: "Student Center",
-    date: new Date("2023-08-20").toISOString(),
-    image: "/images/placeholder-electronics.jpg", // Replace with local placeholder image
-    status: "lost",
-    contactInfo: "sarah@example.com",
-  },
-  {
-    id: "3",
-    name: "Water Bottle",
-    description: "Hydroflask green water bottle",
-    category: "Others",
-    location: "Gym",
-    date: new Date("2023-08-10").toISOString(),
-    status: "lost",
-    contactInfo: "mike@example.com",
-  },
-  {
-    id: "4",
-    name: "Textbook",
-    description: "Introduction to Computer Science textbook",
-    category: "Books",
-    location: "Cafeteria",
-    date: new Date("2023-08-22").toISOString(),
-    status: "lost",
-    contactInfo: "lisa@example.com",
-  },
-];
+// Initial items state - will be replaced with API data
+const initialItems: ILostItem[] = [];
 
 export default function SearchLostItems() {
+  // Router for navigation
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  
+  // Get query from URL if available
+  const urlQuery = searchParams.get('query') || '';
+  
   // State management
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState(urlQuery);
   const [selectedCategory, setSelectedCategory] = useState("");
   const [date, setDate] = useState<Date | undefined>(undefined);
-  const [filteredItems, setFilteredItems] = useState<ILostItem[]>(SAMPLE_ITEMS);
-  const [isLoading, setIsLoading] = useState(false);
+  const [filteredItems, setFilteredItems] = useState<ILostItem[]>(initialItems);
+  const [isLoading, setIsLoading] = useState(true);
+  const [allItems, setAllItems] = useState<ILostItem[]>(initialItems);
 
-  // Categories for filter - move outside useEffect to prevent re-creation
-  const categories = ["All", "Bags", "Electronics", "Books", "Others"];
+  // Categories for filter
+  const categories = ["All", "Electronics", "Clothing", "Documents", "Accessories", "Books", "Other"];
 
-  // Memoize the filter function to prevent unnecessary re-calculations
-  const filterItems = useCallback(() => {
-    let results = SAMPLE_ITEMS;
-
-    // Apply search term filter
-    if (searchTerm.trim()) {
-      results = results.filter(
-        (item) =>
-          item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          item.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          item.location.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    // Apply category filter
-    if (selectedCategory && selectedCategory !== "All") {
-      results = results.filter((item) => item.category === selectedCategory);
-    }
-
-    // Apply date filter
-    if (date) {
-      const filterDate = new Date(date).setHours(0, 0, 0, 0);
-      results = results.filter((item) => {
-        const itemDate = new Date(item.date).setHours(0, 0, 0, 0);
-        return itemDate === filterDate;
-      });
-    }
-
-    return results;
-  }, [searchTerm, selectedCategory, date]);
-
-  // Use the memoized filter function in useEffect
+  // Fetch real data from API
   useEffect(() => {
-    setIsLoading(true);
-
-    // Use a cleanup function to prevent state updates after unmount
-    let isMounted = true;
-    const timeoutId = setTimeout(() => {
-      if (isMounted) {
-        setFilteredItems(filterItems());
+    const fetchLostItems = async () => {
+      setIsLoading(true);
+      try {
+        // Prepare query params
+        const params = new URLSearchParams();
+        if (searchTerm) params.append('query', searchTerm);
+        if (selectedCategory && selectedCategory !== 'All') params.append('category', selectedCategory);
+        if (date) params.append('date', date.toISOString().split('T')[0]);
+        
+        // Make API request
+        const response = await fetch(`/api/lost-items?${params.toString()}`);
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch lost items');
+        }
+        
+        const responseData = await response.json();
+        
+        if (responseData.success) {
+          // Transform API data to match our ILostItem interface
+          const items: ILostItem[] = responseData.data.map((item: any) => ({
+            id: item._id,
+            name: item.itemName,
+            description: item.description || '',
+            category: item.category,
+            location: item.lostLocation || item.lastSeenLocation || '',
+            date: item.lostDate || item.lastSeenDate || item.createdAt,
+            image: item.imageURL || (item.images && item.images.length > 0 ? item.images[0] : null),
+            status: item.status || 'lost',
+            contactInfo: item.contactEmail || '',
+          }));
+          
+          setAllItems(items);
+          setFilteredItems(items);
+        } else {
+          console.error("API returned error:", responseData.error);
+          toast.error("Failed to load items");
+        }
+      } catch (error) {
+        console.error("Error fetching lost items:", error);
+        toast.error("Failed to load items");
+      } finally {
         setIsLoading(false);
       }
-    }, 300);
-
-    return () => {
-      isMounted = false;
-      clearTimeout(timeoutId);
     };
-  }, [filterItems]);
 
-  // Handle date selection with a stable function reference
+    fetchLostItems();
+  }, [searchTerm, selectedCategory, date]);
+
+  // Update URL with search parameters without causing page reload
+  const updateSearchParams = useCallback((term: string, category: string, selectedDate?: Date) => {
+    const params = new URLSearchParams(searchParams);
+    
+    // Update params
+    if (term) params.set('query', term);
+    else params.delete('query');
+    
+    if (category && category !== 'All') params.set('category', category);
+    else params.delete('category');
+    
+    if (selectedDate) params.set('date', selectedDate.toISOString().split('T')[0]);
+    else params.delete('date');
+    
+    // Update URL without refreshing page
+    const newUrl = `${pathname}?${params.toString()}`;
+    window.history.pushState({ path: newUrl }, '', newUrl);
+  }, [pathname, searchParams]);
+
+  // Handle search form submission
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    updateSearchParams(searchTerm, selectedCategory, date);
+    
+    setIsLoading(true);
+    // Apply the search after a brief delay to show loading state
+    setTimeout(() => {
+      setIsLoading(false);
+    }, 300);
+  };
+
+  // Handle date selection
   const handleDateSelect = useCallback((newDate: Date | undefined) => {
     setDate(newDate);
   }, []);
 
-  // Clear filters function
+  // Clear filters
   const handleClearFilters = useCallback(() => {
     setSearchTerm("");
     setSelectedCategory("");
     setDate(undefined);
-  }, []);
-
-  // Mock function to handle search
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!searchTerm.trim()) {
-      toast.error("Please enter a search term");
-      return;
-    }
-
-    // This would be replaced with your actual search logic
-    toast.promise(
-      // Replace this with your actual API call
-      new Promise((resolve) => setTimeout(resolve, 1000)),
-      {
-        loading: "Searching for items...",
-        success: "Results found!",
-        error: "Error searching for items",
-      }
-    );
-  };
+    updateSearchParams("", "", undefined);
+  }, [updateSearchParams]);
 
   return (
     <div className="space-y-8">
-      {/* Netflix-like header description */}
       <div className="text-center mb-6">
         <p className="text-gray-400 max-w-2xl mx-auto">
           Browse through all reported lost items. Use the filters below to
@@ -164,114 +140,118 @@ export default function SearchLostItems() {
         </p>
       </div>
 
-      {/* Enhanced search and filters section */}
       <div className="bg-[#1A1A1A] rounded-xl p-6 shadow-lg border border-[#333333]">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Search input with icon */}
-          <div className="relative">
-            <label
-              htmlFor="search"
-              className="block text-sm font-medium text-gray-300 mb-2"
-            >
-              Search Items
-            </label>
+        <form onSubmit={handleSearch}>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <Input
-                id="search"
-                type="text"
-                placeholder="Find by name, description or location..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="bg-[#252525] border-[#333] text-white pl-10 placeholder:text-gray-500 h-11 focus:ring-[#FFD166] focus:border-[#FFD166]"
-              />
-            </div>
-          </div>
-
-          {/* Category filter with icon */}
-          <div>
-            <label
-              htmlFor="category"
-              className="block text-sm font-medium text-gray-300 mb-2"
-            >
-              Category
-            </label>
-            <div className="relative">
-              <Tag className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <select
-                id="category"
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="w-full rounded-md bg-[#252525] border-[#333] text-white pl-10 py-2.5 h-11 appearance-none focus:outline-none focus:ring-1 focus:ring-[#FFD166]"
-              >
-                {categories.map((category) => (
-                  <option
-                    key={category}
-                    value={category === "All" ? "" : category}
-                  >
-                    {category}
-                  </option>
-                ))}
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
-                <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20">
-                  <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
-                </svg>
+              <label htmlFor="search" className="block text-sm font-medium text-gray-300 mb-2">
+                Search Items
+              </label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Input
+                  id="search"
+                  type="text"
+                  placeholder="Find by name, description or location..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="bg-[#252525] border-[#333] text-white pl-10 placeholder:text-gray-500 h-11 focus:ring-[#FFD166] focus:border-[#FFD166]"
+                />
               </div>
             </div>
+
+            <div>
+              <label htmlFor="category" className="block text-sm font-medium text-gray-300 mb-2">
+                Category
+              </label>
+              <div className="relative">
+                <Tag className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <select
+                  id="category"
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  className="w-full rounded-md bg-[#252525] border-[#333] text-white pl-10 py-2.5 h-11 appearance-none focus:outline-none focus:ring-1 focus:ring-[#FFD166]"
+                >
+                  {categories.map((category) => (
+                    <option
+                      key={category}
+                      value={category === "All" ? "" : category}
+                    >
+                      {category}
+                    </option>
+                  ))}
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
+                  <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20">
+                    <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Lost Date
+              </label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={`w-full justify-start text-left font-normal bg-[#252525] border-[#333] text-white h-11 hover:bg-[#333] hover:text-white focus:ring-[#FFD166] focus:ring-1 ${!date ? "text-gray-500" : "text-white"}`}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4 text-gray-400" />
+                    {date ? format(date, "PPP") : <span>Pick a date</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent
+                  className="w-auto p-0 bg-[#1A1A1A] border-[#333]"
+                  align="start"
+                >
+                  <Calendar
+                    mode="single"
+                    selected={date}
+                    onSelect={handleDateSelect}
+                    initialFocus
+                    className="bg-[#1A1A1A] text-white"
+                    classNames={{
+                      day_selected:
+                        "bg-[#FFD166] text-[#121212] hover:bg-[#FFD166] hover:text-[#121212]",
+                      day_today: "bg-[#333] text-white",
+                    }}
+                  />
+                  {date && (
+                    <div className="p-2 border-t border-[#333] flex justify-end">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDateSelect(undefined)}
+                        className="text-[#FFD166] hover:text-[#FFD166] hover:bg-[#333]"
+                      >
+                        Clear
+                      </Button>
+                    </div>
+                  )}
+                </PopoverContent>
+              </Popover>
+            </div>
           </div>
 
-          {/* Calendar date picker replacing the input date */}
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Lost Date
-            </label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={`w-full justify-start text-left font-normal bg-[#252525] border-[#333] text-white h-11 hover:bg-[#333] hover:text-white focus:ring-[#FFD166] focus:ring-1 ${!date ? "text-gray-500" : "text-white"}`}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4 text-gray-400" />
-                  {date ? format(date, "PPP") : <span>Pick a date</span>}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent
-                className="w-auto p-0 bg-[#1A1A1A] border-[#333]"
-                align="start"
-              >
-                <Calendar
-                  mode="single"
-                  selected={date}
-                  onSelect={handleDateSelect}
-                  initialFocus
-                  className="bg-[#1A1A1A] text-white"
-                  // Add specific styles to avoid theme inconsistencies
-                  classNames={{
-                    day_selected:
-                      "bg-[#FFD166] text-[#121212] hover:bg-[#FFD166] hover:text-[#121212]",
-                    day_today: "bg-[#333] text-white",
-                  }}
-                />
-                {date && (
-                  <div className="p-2 border-t border-[#333] flex justify-end">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDateSelect(undefined)}
-                      className="text-[#FFD166] hover:text-[#FFD166] hover:bg-[#333]"
-                    >
-                      Clear
-                    </Button>
-                  </div>
-                )}
-              </PopoverContent>
-            </Popover>
+          <div className="flex justify-end mt-6">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleClearFilters}
+              className="mr-3"
+            >
+              Clear Filters
+            </Button>
+            <Button type="submit">
+              Search
+            </Button>
           </div>
-        </div>
+        </form>
       </div>
 
-      {/* Results section with Netflix-inspired styling */}
       <div>
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-semibold text-[#FFD166] flex items-center">
@@ -306,7 +286,13 @@ export default function SearchLostItems() {
           )}
         </div>
 
-        {filteredItems.length > 0 ? (
+        {isLoading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {Array.from({ length: 8 }).map((_, index) => (
+              <div key={index} className="h-64 bg-[#1A1A1A] rounded-lg animate-pulse"></div>
+            ))}
+          </div>
+        ) : filteredItems.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {filteredItems.map((item) => (
               <ItemCard key={item.id} item={item} />

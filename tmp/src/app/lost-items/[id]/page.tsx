@@ -154,7 +154,19 @@ export default function LostItemDetail() {
                       Date Lost
                     </h3>
                     <p className="mt-1">
-                      {format(new Date(item.dateLost), "MMMM d, yyyy")}
+                      {item.dateLost
+                        ? (() => {
+                            try {
+                              const date = new Date(item.dateLost);
+                              if (isNaN(date.getTime())) {
+                                return "Unknown date";
+                              }
+                              return format(date, "MMMM d, yyyy");
+                            } catch (error) {
+                              return "Unknown date";
+                            }
+                          })()
+                        : "Unknown date"}
                     </p>
                   </div>
 

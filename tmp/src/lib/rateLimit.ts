@@ -10,6 +10,13 @@ interface RateLimitOptions {
   message?: string; // Custom error message
 }
 
+// Server-safe timestamp function that doesn't cause hydration issues
+const getTimestamp = () => {
+  // Since this is server-side only code (middleware), we don't need to check for window
+  // But using a consistent approach across the codebase for safe timestamp generation
+  return Date.now();
+};
+
 /**
  * Rate limiting middleware for Next.js API routes
  */
@@ -27,8 +34,8 @@ export function withRateLimit(
     // Get client IP address
     const ip = req.ip || req.headers.get("x-forwarded-for") || "unknown";
 
-    // Get current timestamp
-    const now = Date.now();
+    // Get current timestamp using our safe function
+    const now = getTimestamp();
 
     // Get or initialize request count data for this IP
     const requestData = ipRequestCounts.get(ip) || {

@@ -14,7 +14,7 @@ export interface FoundItem extends Document {
   reportedBy: mongoose.Types.ObjectId | User;
   contactEmail: string;
   contactPhone?: string;
-  status: "found" | "claimed" | "verified" | "rejected";
+  status: "pending" | "claimed" | "verified" | "rejected";
   isVerified: boolean;
   verificationSteps?: {
     // Multi-stage verification
@@ -153,10 +153,10 @@ const foundItemSchema = new Schema<FoundItem>(
     status: {
       type: String,
       enum: {
-        values: ["found", "claimed", "verified", "rejected"],
+        values: ["pending", "claimed", "verified", "rejected"],
         message: "Invalid status value",
       },
-      default: "found",
+      default: "pending",
     },
     isVerified: {
       type: Boolean,

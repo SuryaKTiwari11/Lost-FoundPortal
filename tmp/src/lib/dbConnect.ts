@@ -8,10 +8,10 @@ const MONGODB_URI =
  * in development. This prevents connections growing exponentially
  * during API Route usage.
  */
-let cached = global.mongoose;
+let cached = (global as any).mongoose;
 
 if (!cached) {
-  cached = global.mongoose = { conn: null, promise: null };
+  cached = (global as any).mongoose = { conn: null, promise: null };
 }
 
 async function dbConnect() {
@@ -27,8 +27,11 @@ async function dbConnect() {
       family: 4, // Use IPv4, skip trying IPv6
     };
 
+    console.log(
+      `Connecting to MongoDB at ${MONGODB_URI.replace(/\/\/([^:]+):([^@]+)@/, "//***:***@")}`
+    );
     cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
-      console.log("Connected to MongoDB successfully");
+      console.log("✅ Connected to MongoDB successfully");
       return mongoose;
     });
   }
@@ -37,7 +40,7 @@ async function dbConnect() {
     cached.conn = await cached.promise;
   } catch (e) {
     cached.promise = null;
-    console.error("Error connecting to MongoDB:", e);
+    console.error("❌ Error connecting to MongoDB:", e);
     throw e;
   }
 
@@ -48,7 +51,7 @@ async function dbConnect() {
  * Simple function to connect to the database
  * Use this in API routes and server components
  */
-export async function connectToDatabase() {
+async function connectToDatabase() {
   try {
     await dbConnect();
     return { success: true };
@@ -58,4 +61,8 @@ export async function connectToDatabase() {
   }
 }
 
+// Export both as named exports
 export { dbConnect, connectToDatabase };
+
+// Also export dbConnect as the default export to maintain compatibility
+export default dbConnect;

@@ -92,6 +92,27 @@ async function directMongoAuth(email: string, password: string) {
   }
 }
 
+// Check if NEXTAUTH_SECRET is properly set
+if (!process.env.NEXTAUTH_SECRET) {
+  console.warn(
+    "WARNING: NEXTAUTH_SECRET is not set. Using fallback secret. This is not secure for production!"
+  );
+} else {
+  console.log("NEXTAUTH_SECRET is configured correctly");
+}
+
+// Validate admin credentials are available
+if (!process.env.ADMIN_EMAIL || !process.env.ADMIN_PASSWORD) {
+  console.error(
+    "ERROR: Admin credentials are not properly configured in environment variables!"
+  );
+} else {
+  console.log(
+    "Admin credentials are configured correctly:",
+    process.env.ADMIN_EMAIL
+  );
+}
+
 export const authOptions: NextAuthOptions = {
   providers: [
     GoogleProvider({
@@ -111,7 +132,6 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         try {
-          // Make sure credentials are provided
           if (!credentials || !credentials.email || !credentials.password) {
             console.log("Missing credentials");
             throw new Error("Email and password are required");
@@ -120,17 +140,64 @@ export const authOptions: NextAuthOptions = {
           const { email, password } = credentials;
 
           // Special handling for admin login
-          if (email === "admin@lostfound.com") {
-            console.log(
-              "Admin login attempt detected, using direct MongoDB auth"
-            );
-            const user = await directMongoAuth(email, password);
+          if (email === process.env.ADMIN_EMAIL) {
+            console.log("Admin login attempt detected");
 
-            if (user) {
-              return user;
-            } else {
-              throw new Error("Invalid admin credentials");
+            // Fetch admin password from environment variables
+            const adminPassword = process.env.ADMIN_PASSWORD;
+            if (!adminPassword) {
+              console.error(
+                "Admin password is not set in environment variables"
+              );
+              throw new Error("Admin credentials are not configured");
             }
+
+            if (password === adminPassword) {
+              console.log("Admin password matches - login successful");
+
+              try {
+                await dbConnect();
+                const adminUser = await User.findOne({ email });
+
+                if (!adminUser) {
+                  console.log(
+                    "Admin user doesn't exist, creating new admin account"
+                  );
+                  const hashedPassword = await bcrypt.hash(adminPassword, 10);
+                  const newAdminUser = await User.create({
+                    email: process.env.ADMIN_EMAIL,
+                    password: hashedPassword,
+                    name: "Admin User",
+                    role: "admin",
+                    isVerified: true,
+                  });
+                  console.log("Admin created with ID:", newAdminUser._id);
+                  return {
+                    id: newAdminUser._id.toString(),
+                    name: "Admin User",
+                    email: process.env.ADMIN_EMAIL,
+                    role: "admin",
+                  };
+                }
+
+                console.log("Admin user exists, login successful");
+                return {
+                  id: adminUser._id.toString(),
+                  name: adminUser.name || "Admin User",
+                  email: adminUser.email,
+                  role: "admin",
+                };
+              } catch (error) {
+                console.error(
+                  "Error during admin user lookup/creation:",
+                  error
+                );
+                throw new Error("Admin login failed due to server error");
+              }
+            }
+
+            console.log("Admin password doesn't match");
+            throw new Error("Invalid admin credentials");
           }
 
           // Regular authentication using Mongoose for non-admin users
@@ -187,55 +254,37 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async signIn({ account, profile }) {
       console.log("Sign-in attempt with profile:", profile?.email);
-
-      // Allow all email domains - removed any Thapar-only restriction
       return true;
     },
-    async jwt({ token, user, account }) {
+    async jwt({ token, user, account, trigger }) {
+      // When sign in, add user data to token
       if (user) {
         token.id = user.id;
+        token.role = user.role || "user";
+        console.log("JWT callback: Adding user data to token", {
+          id: user.id,
+          role: user.role,
+        });
       }
 
-      // If Google sign-in, create or update user in database
+      // Google sign-in case
       if (account?.provider === "google" && token.email) {
-        try {
-          await dbConnect();
-
-          // Find or create user in database
-          const user = await User.findOneAndUpdate(
-            { email: token.email },
-            {
-              $setOnInsert: {
-                name: token.name || "User",
-                email: token.email,
-                image: token.picture || "",
-                createdAt: new Date(),
-              },
-              $set: {
-                // Update these fields even if user exists
-                lastLogin: new Date(),
-              },
-            },
-            {
-              upsert: true, // Create if doesn't exist
-              new: true, // Return the updated document
-            }
-          );
-
-          // Add user data to token
-          token.id = user._id.toString();
-          token.role = user.role || "user";
-        } catch (error) {
-          console.error("Error with user in database:", error);
-        }
+        // ...existing code...
       }
 
+      // Ensure role is always present in token
+      if (!token.role) {
+        token.role = "user";
+      }
+
+      console.log("JWT callback returning token with role:", token.role);
       return token;
     },
     async session({ session, token }) {
       if (token && session.user) {
         session.user.id = token.id;
         session.user.role = token.role as string;
+        console.log("Session callback: User role set to", session.user.role);
       }
       return session;
     },
@@ -256,8 +305,23 @@ export const authOptions: NextAuthOptions = {
     },
   },
   debug: true, // Always enable debug for troubleshooting
-  secret:
-    process.env.NEXTAUTH_SECRET || "fallback-secret-do-not-use-in-production",
+  secret: process.env.NEXTAUTH_SECRET,
+  session: {
+    strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+    updateAge: 24 * 60 * 60, // 24 hours - refresh token more frequently
+  },
+  cookies: {
+    sessionToken: {
+      name: `next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+      },
+    },
+  },
 };
 
 export default authOptions;

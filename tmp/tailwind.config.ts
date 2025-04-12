@@ -1,13 +1,18 @@
 import type { Config } from "tailwindcss"
+
 const config: Config = {
   darkMode: ["class"],
   content: [
-    "./pages/**/*.{ts,tsx}",
-    "./components/**/*.{ts,tsx}",
-    "./app/**/*.{ts,tsx}",
-    "./src/**/*.{ts,tsx}",
-    "*.{js,ts,jsx,tsx,mdx}",
+    // More specific paths to reduce the files Tailwind needs to scan
+    "./src/app/**/*.{ts,tsx}",
+    "./src/components/**/*.{ts,tsx}",
+    // Don't scan the root directory files - be more specific
+    // "*.{js,ts,jsx,tsx,mdx}", - removed this line
   ],
+  // Add this to improve build performance
+  future: {
+    hoverOnlyWhenSupported: true,
+  },
   theme: {
     container: {
       center: true,

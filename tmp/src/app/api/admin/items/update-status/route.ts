@@ -1,24 +1,30 @@
-import { type NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/option";
 import dbConnect from "@/lib/dbConnect";
 import FoundItem from "@/model/foundItem.model";
+import LostItem from "@/model/lostItem.model";
 import type { ApiResponse } from "@/types";
 
 export async function PUT(
-  request: NextRequest
+  request: Request
 ): Promise<NextResponse<ApiResponse>> {
   try {
+    await dbConnect();
+
+    // Get session to verify authentication
     const session = await getServerSession(authOptions);
-    if (!session || session.user?.role !== "admin") {
+
+    if (session?.user?.role !== "admin") {
       return NextResponse.json(
-        { success: false, error: "Unauthorized" },
+        { success: false, error: "Admin authentication required" },
         { status: 401 }
       );
     }
 
+    // Parse request body
     const body = await request.json();
-    const { itemId, status } = body;
+    const { itemId, status, itemType } = body;
 
     if (!itemId || !status) {
       return NextResponse.json(
@@ -27,28 +33,34 @@ export async function PUT(
       );
     }
 
-    // Validate status
-    if (!["found", "claimed", "verified", "rejected"].includes(status)) {
-      return NextResponse.json(
-        { success: false, error: "Invalid status value" },
-        { status: 400 }
-      );
+    // Common update options for both item types
+    const updateOptions = {
+      status,
+      ...(status === "verified" ? { isVerified: true } : {}),
+      ...(status === "pending" ? { isVerified: false } : {}),
+    };
+
+    let updatedItem;
+
+    // Try to update as lost item first
+    try {
+      updatedItem = await LostItem.findByIdAndUpdate(itemId, updateOptions, {
+        new: true,
+      });
+    } catch (error) {
+      console.log("Not a lost item, trying found item");
     }
 
-    await dbConnect();
-
-    // Update item based on status
-    let updateData: any = { status };
-
-    if (status === "verified") {
-      updateData = { status: "found", isVerified: true };
-    } else if (status === "rejected") {
-      updateData = { status: "rejected", isVerified: false };
+    // If not a lost item, try to update as found item
+    if (!updatedItem) {
+      try {
+        updatedItem = await FoundItem.findByIdAndUpdate(itemId, updateOptions, {
+          new: true,
+        });
+      } catch (error) {
+        console.error("Error updating found item:", error);
+      }
     }
-
-    const updatedItem = await FoundItem.findByIdAndUpdate(itemId, updateData, {
-      new: true,
-    });
 
     if (!updatedItem) {
       return NextResponse.json(
@@ -57,11 +69,18 @@ export async function PUT(
       );
     }
 
-    return NextResponse.json({ success: true, data: updatedItem });
-  } catch (error) {
+    return NextResponse.json({
+      success: true,
+      message: `Item status updated to ${status}`,
+      item: updatedItem,
+    });
+  } catch (error: any) {
     console.error("Error updating item status:", error);
     return NextResponse.json(
-      { success: false, error: "Internal server error" },
+      {
+        success: false,
+        error: error.message || "Failed to update item status",
+      },
       { status: 500 }
     );
   }

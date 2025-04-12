@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,11 +18,14 @@ import {
   ShoppingBag,
   Phone,
   Mail,
-  Image,
+  Image as ImageIcon,
   FileText,
   Tag,
   Home,
   User,
+  X,
+  Upload,
+  Check,
 } from "lucide-react";
 import { ITEM_CATEGORIES } from "@/constants/categories";
 import {
@@ -39,6 +42,10 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { format } from "date-fns";
+import { useSession } from "next-auth/react";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 export type ItemReportType = "lost" | "found";
 
@@ -54,6 +61,7 @@ const defaultLostFormData = {
   contactEmail: "",
   contactPhone: "",
   reward: "", // Lost specific
+  status: "pending", // Add default status for admin verification
 };
 
 const defaultFoundFormData = {
@@ -66,6 +74,7 @@ const defaultFoundFormData = {
   imageURL: "",
   contactEmail: "",
   contactPhone: "",
+  status: "pending", // Add default status for admin verification
 };
 
 type ItemReportFormProps = {
@@ -73,15 +82,31 @@ type ItemReportFormProps = {
 };
 
 export default function ItemReportForm({ type }: ItemReportFormProps) {
+  const { data: session, status } = useSession();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState(
     type === "lost" ? defaultLostFormData : defaultFoundFormData
   );
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
 
   // Get field names based on type
   const locationField = type === "lost" ? "lastSeenLocation" : "foundLocation";
   const dateField = type === "lost" ? "lastSeenDate" : "foundDate";
+
+  // Pre-fill contact info from session
+  useEffect(() => {
+    if (status === "authenticated" && session?.user?.email) {
+      setFormData((prev) => ({
+        ...prev,
+        contactEmail: session.user.email || "",
+      }));
+    }
+  }, [status, session]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -133,6 +158,106 @@ export default function ItemReportForm({ type }: ItemReportFormProps) {
           return newErrors;
         });
       }
+    }
+  };
+
+  // Handle image upload
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Check file size (limit to 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image is too large. Please choose an image under 5MB.");
+      return;
+    }
+
+    // Check file type
+    if (!file.type.startsWith("image/")) {
+      toast.error("Selected file is not an image.");
+      return;
+    }
+
+    setSelectedImage(file);
+
+    // Create preview URL
+    const objectUrl = URL.createObjectURL(file);
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
+    setPreviewUrl(objectUrl);
+
+    // Clear imageURL field if using upload
+    setFormData((prev) => ({
+      ...prev,
+      imageURL: "",
+    }));
+  };
+
+  // Remove selected image
+  const removeSelectedImage = () => {
+    setSelectedImage(null);
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+      setPreviewUrl(null);
+    }
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  // Upload image to Cloudinary
+  const uploadImage = async (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      console.log("Starting upload to Cloudinary...");
+
+      // Create a better progress tracking system with XHR
+      return new Promise<string>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+
+        // Track progress
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            const progress = Math.round((event.loaded / event.total) * 70);
+            setUploadProgress(30 + progress); // Start at 30%, max at 100%
+          }
+        };
+
+        // Handle completion
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              const response = JSON.parse(xhr.responseText);
+              console.log("Upload successful:", response);
+              if (response.success) {
+                resolve(response.url);
+              } else {
+                reject(new Error(response.error || "Upload failed"));
+              }
+            } catch (error) {
+              reject(new Error("Invalid response from server"));
+            }
+          } else {
+            reject(new Error(`Upload failed with status: ${xhr.status}`));
+          }
+        };
+
+        // Handle errors
+        xhr.onerror = () => {
+          console.error("XHR upload error");
+          reject(new Error("Network error during upload"));
+        };
+
+        // Open and send the request
+        xhr.open("POST", "/api/upload", true);
+        xhr.send(formData);
+      });
+    } catch (error) {
+      console.error("Image upload failed:", error);
+      throw error;
     }
   };
 
@@ -198,28 +323,137 @@ export default function ItemReportForm({ type }: ItemReportFormProps) {
       return;
     }
 
+    if (!session?.user?.id) {
+      toast.error("You must be logged in to submit a report");
+      router.push("/sign");
+      return;
+    }
+
     setLoading(true);
+    setUploadProgress(10);
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      // Upload image if selected
+      let imageURL = formData.imageURL;
+      if (selectedImage) {
+        setUploadProgress(30);
+        try {
+          imageURL = await uploadImage(selectedImage);
+          setUploadProgress(60);
+        } catch (error) {
+          toast.error("Image upload failed. Please try again.");
+          setLoading(false);
+          return;
+        }
+      }
 
-      // Redirect or show success message
-      alert(
-        `${type === "lost" ? "Lost" : "Found"} item reported successfully!`
-      );
+      // Prepare data for submission with correct field names mapping
+      let submissionData;
 
-      // Reset form
-      setFormData(type === "lost" ? defaultLostFormData : defaultFoundFormData);
+      if (type === "lost") {
+        // Type assertion to tell TypeScript this is the lost form variant
+        const lostFormData = formData as typeof defaultLostFormData;
+        
+        // Map form fields to match LostItem model requirements
+        submissionData = {
+          itemName: lostFormData.itemName,
+          description: lostFormData.description,
+          category: lostFormData.category,
+          lastLocation: lostFormData.lastSeenLocation, // Map to expected field name
+          dateLost: lostFormData.lastSeenDate, // Map to expected field name
+          imageURL: imageURL || "",
+          contactEmail: lostFormData.contactEmail || session.user.email,
+          contactPhone: lostFormData.contactPhone || "",
+          status: "lost", // Use valid enum value from model
+          reportedBy: session.user.id,
+          userName: session.user.name,
+          userEmail: session.user.email,
+        };
+      } else {
+        // Type assertion for found item form data
+        const foundFormData = formData as typeof defaultFoundFormData;
+        
+        // Found item submission
+        submissionData = {
+          ...foundFormData,
+          status: "pending", // For found items
+          images: imageURL ? [imageURL] : [],
+          imageURL: imageURL || "",
+          reportedBy: session.user.id,
+          userName: session.user.name,
+          userEmail: session.user.email,
+        };
+      }
+
+    
+      console.log(`Submitting ${type} item data:`, submissionData);
+      setUploadProgress(80);
+
+      // Submit to the appropriate API endpoint
+      const endpoint =
+        type === "lost" ? "/api/lost-items/create" : "/api/found-items/create";
+
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(submissionData),
+      });
+
+      const result = await response.json();
+      setUploadProgress(100);
+
+      if (result.success) {
+        toast.success(
+          `${type === "lost" ? "Lost" : "Found"} item reported successfully!`
+        );
+        setFormData(
+          type === "lost" ? defaultLostFormData : defaultFoundFormData
+        );
+        removeSelectedImage();
+
+        // Redirect after a short delay
+        setTimeout(() => {
+          router.push("/dashboard");
+        }, 2000);
+      } else {
+        toast.error(
+          result.error ||
+            `Failed to submit ${type} item report: ${result.error}`
+        );
+        console.error(`${type} item submission error:`, result);
+      }
     } catch (error) {
       console.error("Report submission error:", error);
-      setErrors({
-        form: "An error occurred while submitting your report. Please try again.",
-      });
+      toast.error(
+        "An error occurred while submitting your report. Please try again."
+      );
     } finally {
       setLoading(false);
     }
   };
+
+  if (status === "unauthenticated") {
+    return (
+      <Card className="w-full max-w-2xl shadow-lg border-neutral-800">
+        <CardHeader className="space-y-2 pb-6 pt-6">
+          <CardTitle className="text-2xl font-bold text-center">
+            Login Required
+          </CardTitle>
+          <p className="text-gray-400 text-center text-sm">
+            You must be logged in to report a{" "}
+            {type === "lost" ? "lost" : "found"} item
+          </p>
+        </CardHeader>
+        <CardContent className="flex flex-col items-center justify-center p-6">
+          <Button className="mt-4" onClick={() => router.push("/sign")}>
+            Sign In
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="w-full max-w-2xl shadow-lg border-neutral-800">
@@ -481,32 +715,87 @@ export default function ItemReportForm({ type }: ItemReportFormProps) {
             </div>
           )}
 
-          {/* Image URL */}
-          <div className="space-y-1.5">
-            <label
-              htmlFor="imageURL"
-              className="text-sm font-medium text-gray-200"
-            >
-              Image URL{" "}
-              <span className="text-gray-400 text-xs">(Optional)</span>
+          {/* Image Upload */}
+          <div className="space-y-3">
+            <label className="text-sm font-medium text-gray-200">
+              Item Image
             </label>
-            <div className="relative">
-              <Image
-                className="absolute left-3 top-3 h-4 w-4 text-gray-400"
-                alt=""
-              />
-              <Input
-                id="imageURL"
-                name="imageURL"
-                placeholder="URL to an image of the item"
-                className={`h-10 pl-10 ${errors.imageURL ? "border-red-500" : "border-neutral-700"}`}
-                value={formData.imageURL}
-                onChange={handleChange}
-              />
+
+            <div className="flex flex-col gap-4">
+              {/* Upload option */}
+              <div className="flex flex-col">
+                <div className="flex items-center gap-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="px-4 py-2 border-neutral-700 text-white rounded-md flex items-center gap-2 hover:bg-neutral-800 transition"
+                  >
+                    <Upload className="w-4 h-4" /> Upload Image
+                  </Button>
+                  <span className="text-sm text-gray-400">or</span>
+                </div>
+
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleImageSelect}
+                  accept="image/*"
+                  className="hidden"
+                />
+
+                {/* Image preview */}
+                {previewUrl && (
+                  <div className="mt-4 relative w-full max-w-md">
+                    <div className="relative h-40 rounded-md overflow-hidden">
+                      <Image
+                        src={previewUrl}
+                        alt="Selected image preview"
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="icon"
+                      onClick={removeSelectedImage}
+                      className="absolute top-2 right-2 bg-black bg-opacity-50 text-white rounded-full w-6 h-6 p-1 hover:bg-opacity-70 transition"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                    <p className="mt-1 text-sm text-gray-400">
+                      {selectedImage?.name} (
+                      {(selectedImage?.size / 1024 / 1024).toFixed(2)} MB)
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* External URL option */}
+              <div className="flex flex-col">
+                <label className="text-sm text-gray-400 mb-2">
+                  {!selectedImage
+                    ? "Or enter an image URL:"
+                    : "Image URL (ignored when uploading an image):"}
+                </label>
+                <div className="relative">
+                  <ImageIcon className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Input
+                    id="imageURL"
+                    name="imageURL"
+                    placeholder="URL to an image of the item"
+                    className={`h-10 pl-10 ${errors.imageURL ? "border-red-500" : "border-neutral-700"} ${selectedImage ? "opacity-50" : ""}`}
+                    value={formData.imageURL}
+                    onChange={handleChange}
+                    disabled={!!selectedImage}
+                  />
+                </div>
+                {errors.imageURL && !selectedImage && (
+                  <p className="text-xs text-red-500 mt-1">{errors.imageURL}</p>
+                )}
+              </div>
             </div>
-            {errors.imageURL && (
-              <p className="text-xs text-red-500 mt-1">{errors.imageURL}</p>
-            )}
           </div>
 
           {/* Two-column layout for contact information */}
@@ -573,10 +862,17 @@ export default function ItemReportForm({ type }: ItemReportFormProps) {
             type="submit"
             disabled={loading}
           >
-            {loading ? <Spinner size="sm" className="mr-2" /> : null}
-            {loading
-              ? "Submitting Report..."
-              : `Submit ${type === "lost" ? "Lost" : "Found"} Item Report`}
+            {loading ? (
+              <>
+                <Spinner size="sm" className="mr-2" />
+                Submitting... {uploadProgress > 0 && `(${uploadProgress}%)`}
+              </>
+            ) : (
+              <>
+                <Check className="mr-2 h-4 w-4" />
+                {`Submit ${type === "lost" ? "Lost" : "Found"} Item Report`}
+              </>
+            )}
           </Button>
         </CardFooter>
       </form>

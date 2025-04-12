@@ -1,8 +1,14 @@
 // Mock data for development and testing
 import type { FoundItem, LostItem, ClaimRequest, ItemStats } from "@/types";
 
-// Generate a random ID
-const generateId = () => Math.random().toString(36).substring(2, 15);
+// Use client-side only or deterministic ID generation
+const generateId = () => {
+  // Using a deterministic approach instead of Math.random() to avoid hydration errors
+  return `id-${Date.now().toString(36)}-${(++idCounter).toString(36)}`;
+};
+
+// Counter for generating unique IDs
+let idCounter = 0;
 
 // Create dates
 const today = new Date();
@@ -17,7 +23,7 @@ oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
 
 // Mock user
 const mockUser = {
-  _id: generateId(),
+  _id: "user-001",
   name: "John Doe",
   email: "john@thapar.edu",
   image: "https://randomuser.me/api/portraits/men/1.jpg",
@@ -25,11 +31,16 @@ const mockUser = {
 };
 
 const mockAdmin = {
-  _id: generateId(),
+  _id: "admin-001",
   name: "Admin User",
   email: "admin@thapar.edu",
   image: "https://randomuser.me/api/portraits/men/2.jpg",
   role: "admin",
+};
+
+// Deterministic selection function to replace Math.random()
+const selectItem = <T>(items: T[], index: number): T => {
+  return items[index % items.length];
 };
 
 // Mock found items
@@ -38,32 +49,36 @@ const createMockFoundItems = (
   status = "found",
   isVerified = false
 ): FoundItem[] => {
+  const categories = [
+    "Electronics",
+    "Books",
+    "Accessories",
+    "Clothing",
+    "ID Cards",
+    "Keys",
+    "Documents",
+    "Others",
+  ];
+
+  const locations = [
+    "Library",
+    "Cafeteria",
+    "Auditorium",
+    "Classroom",
+    "Sports Complex",
+  ];
+
+  const dates = [today, yesterday, twoDaysAgo, threeDaysAgo, oneWeekAgo];
+
   return Array(count)
     .fill(null)
     .map((_, index) => ({
-      _id: generateId(),
+      _id: `found-${index + 1}`,
       itemName: `Found Item ${index + 1}`,
       description: `This is a description for found item ${index + 1}. It was found in a public area.`,
-      category: [
-        "Electronics",
-        "Books",
-        "Accessories",
-        "Clothing",
-        "ID Cards",
-        "Keys",
-        "Documents",
-        "Others",
-      ][Math.floor(Math.random() * 8)],
-      foundLocation: [
-        "Library",
-        "Cafeteria",
-        "Auditorium",
-        "Classroom",
-        "Sports Complex",
-      ][Math.floor(Math.random() * 5)],
-      foundDate: [today, yesterday, twoDaysAgo, threeDaysAgo, oneWeekAgo][
-        Math.floor(Math.random() * 5)
-      ],
+      category: selectItem(categories, index),
+      foundLocation: selectItem(locations, index),
+      foundDate: selectItem(dates, index),
       currentHoldingLocation: "Admin Office",
       imageURL:
         index % 3 === 0
@@ -79,41 +94,43 @@ const createMockFoundItems = (
       contactPhone: "+91 98765 43210",
       status: status,
       isVerified: isVerified,
-      createdAt: [today, yesterday, twoDaysAgo, threeDaysAgo, oneWeekAgo][
-        Math.floor(Math.random() * 5)
-      ],
+      createdAt: selectItem(dates, index),
       updatedAt: today,
     }));
 };
 
 // Mock lost items
 const createMockLostItems = (count: number): LostItem[] => {
+  const categories = [
+    "Electronics",
+    "Books",
+    "Accessories",
+    "Clothing",
+    "ID Cards",
+    "Keys",
+    "Documents",
+    "Others",
+  ];
+
+  const locations = [
+    "Library",
+    "Cafeteria",
+    "Auditorium",
+    "Classroom",
+    "Sports Complex",
+  ];
+
+  const dates = [today, yesterday, twoDaysAgo, threeDaysAgo, oneWeekAgo];
+
   return Array(count)
     .fill(null)
     .map((_, index) => ({
-      _id: generateId(),
+      _id: `lost-${index + 1}`,
       itemName: `Lost Item ${index + 1}`,
       description: `This is a description for lost item ${index + 1}. It was last seen in a public area.`,
-      category: [
-        "Electronics",
-        "Books",
-        "Accessories",
-        "Clothing",
-        "ID Cards",
-        "Keys",
-        "Documents",
-        "Others",
-      ][Math.floor(Math.random() * 8)],
-      lostLocation: [
-        "Library",
-        "Cafeteria",
-        "Auditorium",
-        "Classroom",
-        "Sports Complex",
-      ][Math.floor(Math.random() * 5)],
-      lostDate: [today, yesterday, twoDaysAgo, threeDaysAgo, oneWeekAgo][
-        Math.floor(Math.random() * 5)
-      ],
+      category: selectItem(categories, index),
+      lostLocation: selectItem(locations, index),
+      lostDate: selectItem(dates, index),
       imageURL:
         index % 3 === 0
           ? `https://source.unsplash.com/random/300x300?sig=${index + 100}`
@@ -128,9 +145,7 @@ const createMockLostItems = (count: number): LostItem[] => {
       contactPhone: "+91 98765 43210",
       status: "lost",
       foundReports: [],
-      createdAt: [today, yesterday, twoDaysAgo, threeDaysAgo, oneWeekAgo][
-        Math.floor(Math.random() * 5)
-      ],
+      createdAt: selectItem(dates, index),
     }));
 };
 
@@ -139,18 +154,18 @@ const createMockClaimRequests = (
   count: number,
   mockFoundItems: FoundItem[]
 ): ClaimRequest[] => {
+  const dates = [yesterday, twoDaysAgo, threeDaysAgo];
+
   return Array(count)
     .fill(null)
     .map((_, index) => ({
-      _id: generateId(),
+      _id: `claim-${index + 1}`,
       item: mockFoundItems[index % mockFoundItems.length],
       user: mockUser as any,
       proofOfOwnership: `I can identify this item by the unique scratch on the back and the personalized engraving with my initials. I also have the receipt of purchase.`,
       contactPhone: "+91 98765 43210",
       status: "pending",
-      createdAt: [yesterday, twoDaysAgo, threeDaysAgo][
-        Math.floor(Math.random() * 3)
-      ],
+      createdAt: selectItem(dates, index),
       updatedAt: today,
     }));
 };

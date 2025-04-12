@@ -19,6 +19,16 @@ interface CacheItem<T> {
 const apiCache = new Map<string, CacheItem<unknown>>();
 const CACHE_DURATION = 10000; // 10 seconds cache
 
+// Server-safe timestamp function that doesn't cause hydration issues
+const getTimestamp = () => {
+  // Use a stable timestamp during SSR to prevent hydration errors
+  if (typeof window === "undefined") {
+    return 0; // Use a constant value during server-side rendering
+  }
+  // Only use actual timestamp on the client after hydration
+  return Date.now();
+};
+
 // Proper fetch function that handles API calls
 async function fetchAPI<T>(
   endpoint: string,
@@ -29,7 +39,7 @@ async function fetchAPI<T>(
 
   // Return cached response if available and not expired
   const cachedItem = apiCache.get(cacheKey);
-  if (cachedItem && Date.now() - cachedItem.timestamp < CACHE_DURATION) {
+  if (cachedItem && getTimestamp() - cachedItem.timestamp < CACHE_DURATION) {
     return cachedItem.data as ApiResponse<T>;
   }
 
@@ -62,10 +72,10 @@ async function fetchAPI<T>(
     // Parse JSON response
     const data = await response.json();
 
-    // Store in cache
+    // Store in cache with server-safe timestamp
     apiCache.set(cacheKey, {
       data,
-      timestamp: Date.now(),
+      timestamp: getTimestamp(),
     });
 
     return data;
@@ -192,11 +202,32 @@ export const adminAPI = {
     return fetchAPI<FoundItemFormData[]>(`/api/admin/items?status=${status}`);
   },
 
-  updateItemStatus: async (itemId: string, status: string) => {
+  updateItemStatus: async (
+    itemId: string,
+    status: string,
+    itemType?: string
+  ) => {
     return fetchAPI<void>("/api/admin/items/update-status", {
       method: "PUT",
-      body: JSON.stringify({ itemId, status }),
+      body: JSON.stringify({ itemId, status, itemType }),
     });
+  },
+
+  // API method to get items with filtering
+  getItems: async (queryParams = "") => {
+    try {
+      const response = await fetch(`/api/admin/items?${queryParams}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      return await response.json();
+    } catch (error) {
+      console.error("API Error getting items:", error);
+      return { success: false, error: "Failed to fetch items" };
+    }
   },
 
   // Bulk operations
@@ -357,6 +388,54 @@ export const adminAPI = {
       method: "POST",
       body: formData,
     });
+  },
+
+  // Image management
+  getItemImages: async (itemId: string, itemType: "lost" | "found") => {
+    return fetchAPI<ItemImage[]>(
+      `/api/admin/items/${itemId}/images?type=${itemType}`
+    );
+  },
+
+  uploadItemImage: async (
+    itemId: string,
+    itemType: "lost" | "found",
+    file: File
+  ) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("itemType", itemType);
+
+    return fetchAPI<ItemImage>(`/api/admin/items/${itemId}/images`, {
+      method: "POST",
+      body: formData,
+    });
+  },
+
+  deleteItemImage: async (
+    itemId: string,
+    itemType: "lost" | "found",
+    imageId: string
+  ) => {
+    return fetchAPI<void>(
+      `/api/admin/items/${itemId}/images/${imageId}?type=${itemType}`,
+      {
+        method: "DELETE",
+      }
+    );
+  },
+
+  setItemPrimaryImage: async (
+    itemId: string,
+    itemType: "lost" | "found",
+    imageId: string
+  ) => {
+    return fetchAPI<void>(
+      `/api/admin/items/${itemId}/images/${imageId}/primary?type=${itemType}`,
+      {
+        method: "PUT",
+      }
+    );
   },
 
   // Analytics

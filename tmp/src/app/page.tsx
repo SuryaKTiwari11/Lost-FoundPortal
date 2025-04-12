@@ -16,6 +16,8 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 
 interface LostItem {
   _id: string;
@@ -27,21 +29,23 @@ interface LostItem {
 }
 
 export default function Home() {
+  const { status } = useSession();
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [recentItems, setRecentItems] = useState<LostItem[]>([]);
   const [itemsLoading, setItemsLoading] = useState(true);
+  const router = useRouter();
 
   // Fetch recent lost items from the database
   useEffect(() => {
     async function fetchRecentLostItems() {
       try {
-        const response = await fetch("/api/lost-items?limit=6&sort=recent");
+        const response = await fetch("/api/lost-items?limit=6");
 
         if (response.ok) {
           const data = await response.json();
-          if (data.success && data.items) {
-            setRecentItems(data.items);
+          if (data.success) {
+            setRecentItems(data.data || []);
           }
         }
       } catch (error) {
@@ -56,12 +60,12 @@ export default function Home() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!searchQuery.trim()) return;
+
     setLoading(true);
-    // Simulate search delay
-    setTimeout(() => {
-      setLoading(false);
-      window.location.href = `/search?query=${searchQuery}`;
-    }, 1000);
+    // Use the router to navigate properly to the lost-items page with the search query
+    router.push(`/lost-items?query=${encodeURIComponent(searchQuery.trim())}`);
   };
 
   // Format date to be more readable
@@ -102,7 +106,7 @@ export default function Home() {
               <Button
                 type="submit"
                 className="absolute right-1.5 top-1.5 h-9"
-                disabled={loading}
+                disabled={loading || !searchQuery.trim()}
               >
                 {loading ? <Spinner size="sm" /> : "Search"}
               </Button>
@@ -114,7 +118,7 @@ export default function Home() {
               <Link href="/report-lost">Report Lost Item</Link>
             </Button>
             <Button asChild>
-              <Link href="/found-items">Browse Found Items</Link>
+              <Link href="/report-found">Report Found Item</Link>
             </Button>
           </div>
         </div>
@@ -152,9 +156,9 @@ export default function Home() {
                           <Image
                             src={item.images[0]}
                             alt={item.itemName}
-                            layout="fill"
-                            objectFit="cover"
-                            className="transition-transform hover:scale-105"
+                            fill={true}
+                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                            className="object-cover transition-transform hover:scale-105"
                             onError={(e) => {
                               // Fallback for image loading errors
                               const target = e.target as HTMLImageElement;
@@ -257,8 +261,107 @@ export default function Home() {
             </Card>
           </div>
 
-          <Button className="mt-12" asChild>
-            <Link href="/sign/up">Get Started Now</Link>
+          {status !== "authenticated" && (
+            <Button className="mt-12" asChild>
+              <Link href="/sign">Get Started Now</Link>
+            </Button>
+          )}
+        </div>
+      </section>
+
+      {/* Testimonials Section */}
+      <section className="py-16 px-4 bg-[#121212]">
+        <div className="max-w-6xl mx-auto text-center">
+          <h2 className="text-3xl font-bold text-white mb-4">What Users Say</h2>
+          <p className="text-gray-400 mb-12 max-w-2xl mx-auto">
+            Hear from people who have successfully recovered their items or helped others find theirs.
+          </p>
+          
+          <div className="grid md:grid-cols-3 gap-8">
+            {/* Testimonial 1 */}
+            <Card className="bg-[#1A1A1A] border-[#333333] text-white overflow-hidden">
+              <CardContent className="pt-6 relative">
+                <div className="absolute top-0 right-0 opacity-10">
+                  <svg width="80" height="60" viewBox="0 0 80 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M32 0L20 60H0L12 0H32ZM80 0L68 60H48L60 0H80Z" fill="#FFD166"/>
+                  </svg>
+                </div>
+                
+                <div className="text-left">
+                  <p className="italic text-gray-300 mb-6">
+                    "I lost my laptop at the university library and was devastated. Within 48 hours of reporting it on this platform, someone had found it and reached out. The process was seamless!"
+                  </p>
+                  
+                  <div className="flex items-center">
+                    <div className="w-10 h-10 rounded-full bg-[#2A2A2A] flex items-center justify-center mr-3 text-[#FFD166] font-bold">
+                      AK
+                    </div>
+                    <div>
+                      <h4 className="font-semibold">Aanya Kumar</h4>
+                      <p className="text-sm text-gray-400">Computer Science Student</p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            
+            {/* Testimonial 2 */}
+            <Card className="bg-[#1A1A1A] border-[#333333] text-white overflow-hidden">
+              <CardContent className="pt-6 relative">
+                <div className="absolute top-0 right-0 opacity-10">
+                  <svg width="80" height="60" viewBox="0 0 80 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M32 0L20 60H0L12 0H32ZM80 0L68 60H48L60 0H80Z" fill="#FFD166"/>
+                  </svg>
+                </div>
+                
+                <div className="text-left">
+                  <p className="italic text-gray-300 mb-6">
+                    "I found someone's wallet containing important ID cards and cash. This platform made it easy to securely connect with the owner. The gratitude on their face was priceless!"
+                  </p>
+                  
+                  <div className="flex items-center">
+                    <div className="w-10 h-10 rounded-full bg-[#2A2A2A] flex items-center justify-center mr-3 text-[#FFD166] font-bold">
+                      RJ
+                    </div>
+                    <div>
+                      <h4 className="font-semibold">Raj Joshi</h4>
+                      <p className="text-sm text-gray-400">Graduate Teaching Assistant</p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            
+            {/* Testimonial 3 */}
+            <Card className="bg-[#1A1A1A] border-[#333333] text-white overflow-hidden">
+              <CardContent className="pt-6 relative">
+                <div className="absolute top-0 right-0 opacity-10">
+                  <svg width="80" height="60" viewBox="0 0 80 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M32 0L20 60H0L12 0H32ZM80 0L68 60H48L60 0H80Z" fill="#FFD166"/>
+                  </svg>
+                </div>
+                
+                <div className="text-left">
+                  <p className="italic text-gray-300 mb-6">
+                    "My grandfather's watch has immense sentimental value. When I lost it on campus, I thought it was gone forever. Thanks to this platform, it was back on my wrist within a week!"
+                  </p>
+                  
+                  <div className="flex items-center">
+                    <div className="w-10 h-10 rounded-full bg-[#2A2A2A] flex items-center justify-center mr-3 text-[#FFD166] font-bold">
+                      SP
+                    </div>
+                    <div>
+                      <h4 className="font-semibold">Sarah Patel</h4>
+                      <p className="text-sm text-gray-400">History Department</p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+          
+          <Button variant="outline" className="mt-10 border-[#FFD166] text-[#FFD166] hover:bg-[#FFD166]/10">
+            <Link href="/about">Read More Success Stories</Link>
           </Button>
         </div>
       </section>

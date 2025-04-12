@@ -22,26 +22,7 @@ import {
   X as XIcon,
 } from "lucide-react";
 import Spinner from "@/components/ui/Spinner";
-
-// Mock data for development - replace with API call in production
-const MOCK_FOUND_ITEM = {
-  _id: "f1",
-  itemName: "Blue Wallet",
-  category: "Accessories",
-  foundLocation: "Student Center",
-  foundDate: new Date(2023, 4, 14),
-  description:
-    "Blue leather wallet with some cash and ID cards. Found on a table near the entrance.",
-  imageURL: "",
-  status: "found",
-  isVerified: true,
-  currentHoldingLocation: "Admin Office, Room 123",
-  reportedBy: {
-    name: "Alex Johnson",
-    email: "alex@example.com",
-  },
-  createdAt: new Date(2023, 4, 14),
-};
+import { itemsAPI } from "@/services/api";
 
 export default function FoundItemDetail() {
   const { id } = useParams();
@@ -52,21 +33,27 @@ export default function FoundItemDetail() {
   const [claimModalOpen, setClaimModalOpen] = useState(false);
 
   useEffect(() => {
-    // Simulate API fetch
     const fetchFoundItem = async () => {
       setLoading(true);
-      // In production, this would be an API call
-      // await fetch(`/api/found-items/${id}`)
+      try {
+        const response = await itemsAPI.getFoundItemById(id as string);
 
-      // Simulate API delay
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      // Set the mock data
-      setItem(MOCK_FOUND_ITEM);
-      setLoading(false);
+        if (response.success) {
+          setItem(response.data);
+        } else {
+          toast.error(response.error || "Failed to load item details");
+        }
+      } catch (error) {
+        console.error("Error fetching found item:", error);
+        toast.error("An error occurred while loading the item");
+      } finally {
+        setLoading(false);
+      }
     };
 
-    fetchFoundItem();
+    if (id) {
+      fetchFoundItem();
+    }
   }, [id]);
 
   const handleClaimItem = async () => {
@@ -218,7 +205,9 @@ export default function FoundItemDetail() {
                       <p className="text-sm font-medium text-gray-400">
                         Reported By
                       </p>
-                      <p className="text-gray-300">{item.reportedBy.name}</p>
+                      <p className="text-gray-300">
+                        {item.reportedBy?.name || "Anonymous"}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -251,16 +240,20 @@ export default function FoundItemDetail() {
             item={item}
             onClose={() => setClaimModalOpen(false)}
             onSubmit={async (data) => {
-              // This would be an API call in production
-              // await fetch('/api/found-items/claim', { method: 'POST', body: JSON.stringify(data) })
-
-              // Simulate API call
-              await new Promise((resolve) => setTimeout(resolve, 1500));
-
-              toast.success(
-                "Claim submitted successfully! You'll be notified when it's reviewed."
-              );
-              setClaimModalOpen(false);
+              try {
+                const response = await itemsAPI.claimFoundItem(data);
+                if (response.success) {
+                  toast.success(
+                    "Claim submitted successfully! You'll be notified when it's reviewed."
+                  );
+                  setClaimModalOpen(false);
+                } else {
+                  toast.error(response.error || "Failed to submit claim");
+                }
+              } catch (error) {
+                console.error("Error submitting claim:", error);
+                toast.error("Failed to submit claim. Please try again.");
+              }
             }}
           />
         )}

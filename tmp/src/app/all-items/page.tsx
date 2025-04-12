@@ -373,11 +373,18 @@ function ItemCard({ item }: { item: any }) {
   const isLostItem = "lostLocation" in item || item.status === "lost";
 
   const formatDate = (dateString: string | Date) => {
+    if (!dateString) return "Unknown date";
+
     try {
       const date = new Date(dateString);
+
+      // Check if date is valid before formatting
+      if (isNaN(date.getTime())) {
+        return "Unknown date";
+      }
+
       return format(date, "MMM d, yyyy");
     } catch (error) {
-      console.error("Invalid date:", dateString);
       return "Unknown date";
     }
   };
@@ -440,7 +447,9 @@ function ItemCard({ item }: { item: any }) {
 
       <CardFooter className="pt-2">
         <Link
-          href={isLostItem ? `/lost-items/${item._id}` : `/item/${item._id}`}
+          href={
+            isLostItem ? `/lost-items/${item._id}` : `/found-items/${item._id}`
+          }
           className="w-full"
         >
           <Button className="w-full">View Details</Button>

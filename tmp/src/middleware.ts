@@ -8,44 +8,76 @@ export default withAuth(
     const token = req.nextauth.token;
     const path = req.nextUrl.pathname;
 
-    // Access session data from token
-    // All session data is available on token since we added it in jwt callback
-    const isVerified = token?.isVerified;
-    const isAcceptingMessages = token?.isAcceptingMessages;
-    const userId = token?._id;
-    const username = token?.username;
+    // Debug token information (this will appear in server logs)
+    console.log(`Middleware processing path: ${path}`);
+    console.log(`Token details:`, {
+      exists: !!token,
+      role: token?.role || "none",
+      email: token?.email || "none",
+      name: token?.name || "none",
+    });
 
-    // Example of route-specific checks
-    if (path.startsWith("/messages") && !isAcceptingMessages) {
-      // Redirect users who aren't accepting messages away from message routes
-      return NextResponse.redirect(new URL("/dashboard", req.url));
+    // For admin routes, check if user has admin role
+    if (path.startsWith("/admin")) {
+      if (token?.role !== "admin") {
+        console.log("Non-admin access blocked - redirecting to home");
+        return NextResponse.redirect(new URL("/", req.url));
+      }
+      console.log("Admin access granted to:", token?.email);
     }
 
-    // For routes that require verification
-    if ((path.startsWith("/create") || path.includes("/edit")) && !isVerified) {
-      // Redirect unverified users trying to create/edit items
-      return NextResponse.redirect(new URL("/profile/verify", req.url));
-    }
-
+    // For other protected routes, any authenticated user can access
     return NextResponse.next();
   },
   {
     callbacks: {
-      // First check if user is authenticated at all
-      authorized: ({ token }) => !!token,
+      authorized: ({ token, req }) => {
+        const path = req.nextUrl.pathname;
+
+        // Allow access to public routes without authentication
+        if (
+          path === "/" ||
+          path === "/sign" ||
+          path.startsWith("/sign") ||
+          path === "/auth-error" ||
+          path.startsWith("/auth") ||
+          path.startsWith("/about") ||
+          path.startsWith("/api") ||
+          path.startsWith("/all-items") ||
+          path.startsWith("/found-items") ||
+          path.startsWith("/lost-items")
+        ) {
+          return true;
+        }
+
+        // For admin routes, verify admin role is present
+        if (path.startsWith("/admin")) {
+          const hasAdminRole = !!token && token.role === "admin";
+          console.log(
+            `Admin authorization check: ${hasAdminRole ? "GRANTED" : "DENIED"}`
+          );
+          return hasAdminRole;
+        }
+
+        // All other protected routes require any valid token
+        return !!token;
+      },
     },
     pages: {
-      signIn: "/sign-in",
+      signIn: "/sign",
+      error: "/auth-error",
     },
   }
 );
 
-// Apply middleware to these routes
+// Apply middleware to these routes (be specific to avoid over-protection)
 export const config = {
   matcher: [
     // Protected routes pattern
+    "/admin/:path*",
     "/dashboard/:path*",
     "/profile/:path*",
-    // Omitted public routes like homepage, sign in, etc.
+    "/report-found/:path*",
+    "/report-lost/:path*",
   ],
 };

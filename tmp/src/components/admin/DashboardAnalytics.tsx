@@ -222,6 +222,20 @@ export default function DashboardAnalytics() {
     return null;
   };
 
+  // Safe access to object properties
+  const safeMatchRate = data?.matchRate || { total: 0, matched: 0, rate: 0 };
+  const safeResolutionRate = data?.resolutionRate || {
+    total: 0,
+    resolved: 0,
+    rate: 0,
+  };
+  const safeResponseTime = data?.responseTime || { average: 0, min: 0, max: 0 };
+  const safeItemsByType = data?.itemsByType || [];
+  const safeItemsByCategory = data?.itemsByCategory || [];
+  const safeItemsByStatus = data?.itemsByStatus || [];
+  const safeItemsByDate = data?.itemsByDate || [];
+  const safePopularLocations = data?.popularLocations || [];
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -256,15 +270,15 @@ export default function DashboardAnalytics() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{data.matchRate.rate}%</div>
+                <div className="text-2xl font-bold">{safeMatchRate.rate}%</div>
                 <p className="text-xs text-gray-400 mt-1">
-                  {data.matchRate.matched} matched out of {data.matchRate.total}{" "}
+                  {safeMatchRate.matched} matched out of {safeMatchRate.total}{" "}
                   items
                 </p>
                 <div className="mt-2 h-2 w-full bg-[#333333] rounded-full overflow-hidden">
                   <div
                     className="h-full bg-blue-600 rounded-full"
-                    style={{ width: `${data.matchRate.rate}%` }}
+                    style={{ width: `${safeMatchRate.rate}%` }}
                   />
                 </div>
               </CardContent>
@@ -279,16 +293,16 @@ export default function DashboardAnalytics() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {data.resolutionRate.rate}%
+                  {safeResolutionRate.rate}%
                 </div>
                 <p className="text-xs text-gray-400 mt-1">
-                  {data.resolutionRate.resolved} resolved out of{" "}
-                  {data.resolutionRate.total} items
+                  {safeResolutionRate.resolved} resolved out of{" "}
+                  {safeResolutionRate.total} items
                 </p>
                 <div className="mt-2 h-2 w-full bg-[#333333] rounded-full overflow-hidden">
                   <div
                     className="h-full bg-green-600 rounded-full"
-                    style={{ width: `${data.resolutionRate.rate}%` }}
+                    style={{ width: `${safeResolutionRate.rate}%` }}
                   />
                 </div>
               </CardContent>
@@ -303,14 +317,14 @@ export default function DashboardAnalytics() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {data.responseTime.average} hrs
+                  {safeResponseTime.average} hrs
                 </div>
                 <p className="text-xs text-gray-400 mt-1">
-                  Range: {data.responseTime.min} - {data.responseTime.max} hrs
+                  Range: {safeResponseTime.min} - {safeResponseTime.max} hrs
                 </p>
                 <div className="mt-4 flex items-center gap-1.5">
                   <span className="font-medium text-xs text-blue-400">
-                    {data.responseTime.min}h
+                    {safeResponseTime.min}h
                   </span>
                   <div className="flex-1 h-2 bg-[#333333] rounded-full overflow-hidden">
                     <div
@@ -321,7 +335,7 @@ export default function DashboardAnalytics() {
                     />
                   </div>
                   <span className="font-medium text-xs text-blue-400">
-                    {data.responseTime.max}h
+                    {safeResponseTime.max}h
                   </span>
                 </div>
               </CardContent>
@@ -336,14 +350,14 @@ export default function DashboardAnalytics() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {data.itemsByType.reduce((sum, item) => sum + item.count, 0)}
+                  {safeItemsByType.reduce((sum, item) => sum + item.count, 0)}
                 </div>
                 <div className="flex items-center gap-3 mt-2">
                   <div className="flex items-center gap-1.5">
                     <div className="w-3 h-3 rounded-full bg-[#EF476F]" />
                     <span className="text-xs text-gray-400">
                       Lost:{" "}
-                      {data.itemsByType.find((i) => i.type === "Lost")?.count ||
+                      {safeItemsByType.find((i) => i.type === "Lost")?.count ||
                         0}
                     </span>
                   </div>
@@ -351,18 +365,18 @@ export default function DashboardAnalytics() {
                     <div className="w-3 h-3 rounded-full bg-[#06D6A0]" />
                     <span className="text-xs text-gray-400">
                       Found:{" "}
-                      {data.itemsByType.find((i) => i.type === "Found")
-                        ?.count || 0}
+                      {safeItemsByType.find((i) => i.type === "Found")?.count ||
+                        0}
                     </span>
                   </div>
                 </div>
                 <div className="mt-2 h-2 w-full bg-[#333333] rounded-full overflow-hidden flex">
-                  {data.itemsByType.map((item, index) => (
+                  {safeItemsByType.map((item, index) => (
                     <div
                       key={index}
                       className="h-full"
                       style={{
-                        width: `${(item.count / data.itemsByType.reduce((sum, i) => sum + i.count, 0)) * 100}%`,
+                        width: `${(item.count / safeItemsByType.reduce((sum, i) => sum + i.count, 0) || 1) * 100}%`,
                         backgroundColor: item.color,
                       }}
                     />
@@ -383,7 +397,7 @@ export default function DashboardAnalytics() {
                 <div className="h-[300px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart
-                      data={data.itemsByDate}
+                      data={safeItemsByDate}
                       margin={{
                         top: 5,
                         right: 30,
@@ -439,7 +453,7 @@ export default function DashboardAnalytics() {
                 <div className="h-[300px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
-                      data={data.itemsByCategory}
+                      data={safeItemsByCategory}
                       margin={{
                         top: 5,
                         right: 30,
@@ -459,7 +473,7 @@ export default function DashboardAnalytics() {
                       <Tooltip content={<CustomTooltip />} />
                       <Legend />
                       <Bar dataKey="count" name="Count">
-                        {data.itemsByCategory.map((entry, index) => (
+                        {safeItemsByCategory.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={entry.color} />
                         ))}
                       </Bar>
@@ -479,7 +493,7 @@ export default function DashboardAnalytics() {
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
-                        data={data.itemsByStatus}
+                        data={safeItemsByStatus}
                         cx="50%"
                         cy="50%"
                         labelLine={false}
@@ -514,7 +528,7 @@ export default function DashboardAnalytics() {
                           );
                         }}
                       >
-                        {data.itemsByStatus.map((entry, index) => (
+                        {safeItemsByStatus.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={entry.color} />
                         ))}
                       </Pie>
@@ -534,7 +548,7 @@ export default function DashboardAnalytics() {
                 <div className="h-[300px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
-                      data={data.popularLocations}
+                      data={safePopularLocations}
                       margin={{
                         top: 5,
                         right: 30,

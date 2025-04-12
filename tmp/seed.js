@@ -1,6 +1,8 @@
 // Simple script to seed the database with test data
-require("dotenv").config();
-const mongoose = require("mongoose");
+import dotenv from "dotenv";
+import mongoose from "mongoose";
+
+dotenv.config();
 
 // Connect to MongoDB
 console.log("Connecting to MongoDB...");

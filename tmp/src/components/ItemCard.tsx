@@ -1,14 +1,7 @@
 import { ILostItem } from "@/models/LostItem";
-import Image from "next/image";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardFooter,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { ReliableImage } from "@/components/ui/reliable-image";
 
 interface ItemCardProps {
   item: ILostItem;
@@ -19,22 +12,21 @@ export default function ItemCard({ item }: ItemCardProps) {
     <Card className="overflow-hidden border-[#333] bg-[#1A1A1A] text-white hover:shadow-lg transition-shadow duration-300">
       <div className="relative h-48 w-full bg-[#2A2A2A]">
         {item.image ? (
-          // Use a simple img tag instead of Next.js Image component to avoid domain restrictions
-          // Or handle errors with the Image component
-          <div className="h-full w-full relative">
-            <img
-              src={item.image}
-              alt={item.name}
-              className="object-cover h-full w-full"
-              onError={(e) => {
-                e.currentTarget.onerror = null;
-                e.currentTarget.src = "/images/placeholder.jpg"; // Use a default local placeholder
-              }}
-            />
-          </div>
+          <ReliableImage 
+            src={item.image} 
+            alt={item.name} 
+            category={item.category} 
+            fill={true}
+            className="h-full w-full"
+          />
         ) : (
           <div className="flex items-center justify-center h-full">
-            <span className="text-gray-500">No image available</span>
+            <ReliableImage
+              src={null}
+              category={item.category}
+              alt="Category placeholder"
+              className="h-32 w-32"
+            />
           </div>
         )}
       </div>
