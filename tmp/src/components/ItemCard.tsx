@@ -1,4 +1,4 @@
-import { ILostItem } from "@/models/LostItem";
+import { LostItem } from "@/model/lostItem.model";
 import {
   Card,
   CardContent,
@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 import { ReliableImage } from "@/components/ui/reliable-image";
 
 interface ItemCardProps {
-  item: ILostItem;
+  item: LostItem;
 }
 
 export default function ItemCard({ item }: ItemCardProps) {

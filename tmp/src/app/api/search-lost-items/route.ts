@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/dbConnect";
-import LostItem from "@/models/LostItem";
+import { LostItem } from "@/model/lostItem.model";
 
 export async function GET(request: NextRequest) {
   try {

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import ItemCard from "@/components/ItemCard";
-import { ILostItem } from "@/models/LostItem";
+import { LostItem } from "@/model/lostItem.model";
 import { Input } from "@/components/ui/input";
 import { Search, Calendar as CalendarIcon, Tag } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
@@ -17,7 +17,7 @@ import { format } from "date-fns";
 import { toast } from "sonner";
 
 // Initial items state - will be replaced with API data
-const initialItems: ILostItem[] = [];
+const initialItems: LostItem[] = [];
 
 export default function SearchLostItems() {
   // Router for navigation
@@ -32,9 +32,9 @@ export default function SearchLostItems() {
   const [searchTerm, setSearchTerm] = useState(urlQuery);
   const [selectedCategory, setSelectedCategory] = useState("");
   const [date, setDate] = useState<Date | undefined>(undefined);
-  const [filteredItems, setFilteredItems] = useState<ILostItem[]>(initialItems);
+  const [filteredItems, setFilteredItems] = useState<LostItem[]>(initialItems);
   const [isLoading, setIsLoading] = useState(true);
-  const [allItems, setAllItems] = useState<ILostItem[]>(initialItems);
+  const [allItems, setAllItems] = useState<LostItem[]>(initialItems);
 
   // Categories for filter
   const categories = [
@@ -69,8 +69,8 @@ export default function SearchLostItems() {
         const responseData = await response.json();
 
         if (responseData.success) {
-          // Transform API data to match our ILostItem interface
-          const items: ILostItem[] = responseData.data.map((item: any) => ({
+          // Transform API data to match our LostItem interface
+          const items: LostItem[] = responseData.data.map((item: any) => ({
             id: item._id,
             name: item.itemName,
             description: item.description || "",
