@@ -1,7 +1,18 @@
 import mongoose from "mongoose";
+import { loadEnvConfig } from "./load-env";
 
-const MONGODB_URI =
-  process.env.MONGODB_URI || "mongodb://localhost:27017/lostnfound";
+// Ensure environment variables are loaded
+loadEnvConfig();
+
+// Get MongoDB URI from environment variables with proper validation
+const MONGODB_URI = process.env.MONGODB_URI;
+
+// Exit early with helpful error if MONGODB_URI is not defined
+if (!MONGODB_URI) {
+  throw new Error(
+    "Please define the MONGODB_URI environment variable inside .env"
+  );
+}
 
 /**
  * Global is used here to maintain a cached connection across hot reloads
@@ -27,9 +38,13 @@ async function dbConnect() {
       family: 4, // Use IPv4, skip trying IPv6
     };
 
-    console.log(
-      `Connecting to MongoDB at ${MONGODB_URI.replace(/\/\/([^:]+):([^@]+)@/, "//***:***@")}`
+    // Use a safer way to log the connection string (hiding credentials)
+    const connectionString = MONGODB_URI.replace(
+      /\/\/(.*):(.*)@/,
+      "//***:***@"
     );
+    console.log(`Connecting to MongoDB at ${connectionString}`);
+
     cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
       console.log("✅ Connected to MongoDB successfully");
       return mongoose;

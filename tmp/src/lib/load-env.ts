@@ -1,43 +1,80 @@
-// Environment variables loader
-// This file should be imported at the beginning of server components
-import { config } from "dotenv";
+// Environment variable loader to ensure proper loading across all contexts
+import dotenv from "dotenv";
+import fs from "fs";
 import path from "path";
 
-// Load env variables from .env file
-const result = config({
-  path: path.resolve(process.cwd(), ".env"),
-});
+// Global variable to track if environment has been loaded
+let envLoaded = false;
 
-if (result.error) {
-  console.warn("Warning: Error loading .env file:", result.error);
+/**
+ * Ensures environment variables are properly loaded
+ * This is especially important for API routes and edge functions
+ */
+export function loadEnvConfig() {
+  // Only load once to avoid duplicate loading
+  if (envLoaded) {
+    return process.env;
+  }
+
+  try {
+    // For production, environment variables should be set in the hosting platform
+    if (process.env.NODE_ENV === "production") {
+      console.log("Using production environment variables");
+      envLoaded = true;
+      return process.env;
+    }
+
+    // For development, load from .env files
+    const envFiles = [".env.local", ".env.development", ".env"];
+
+    let loaded = false;
+    for (const file of envFiles) {
+      const envPath = path.resolve(process.cwd(), file);
+      if (fs.existsSync(envPath)) {
+        dotenv.config({ path: envPath });
+        console.log(`📌 Environment loaded from ${file}`);
+        loaded = true;
+        break;
+      }
+    }
+
+    if (!loaded) {
+      console.warn(
+        "⚠️ No .env file found. Using system environment variables."
+      );
+    }
+
+    // Validate critical environment variables
+    validateMongoDBConnection();
+
+    // Mark as loaded
+    envLoaded = true;
+
+    return process.env;
+  } catch (error) {
+    console.error("Error loading environment variables:", error);
+    return process.env;
+  }
 }
 
-// Validate critical environment variables
-const requiredVars = [
-  "MONGODB_URI",
-  "NEXTAUTH_SECRET",
-  "ADMIN_EMAIL",
-  "ADMIN_PASSWORD",
-  "CLOUDINARY_CLOUD_NAME",
-  "CLOUDINARY_API_KEY",
-  "CLOUDINARY_API_SECRET",
-];
+/**
+ * Validates MongoDB connection string
+ */
+function validateMongoDBConnection() {
+  const uri = process.env.MONGODB_URI;
 
-const missingVars = requiredVars.filter((varName) => !process.env[varName]);
+  if (!uri) {
+    console.error("❌ MONGODB_URI is not set in environment variables");
+    return null;
+  }
 
-if (missingVars.length > 0) {
-  console.warn(
-    `Warning: Missing required environment variables: ${missingVars.join(", ")}`
-  );
+  // Clean up whitespace that might cause connection issues
+  process.env.MONGODB_URI = uri.replace(/\s+/g, "");
+
+  return process.env.MONGODB_URI;
 }
 
-// Log environment status (without sensitive values)
-console.log("Environment variables loaded:", {
-  NODE_ENV: process.env.NODE_ENV,
-  MONGODB_URI: process.env.MONGODB_URI ? "[CONFIGURED]" : "[MISSING]",
-  CLOUDINARY_CONFIG: process.env.CLOUDINARY_CLOUD_NAME
-    ? "[CONFIGURED]"
-    : "[MISSING]",
-  ADMIN_CONFIG: process.env.ADMIN_EMAIL ? "[CONFIGURED]" : "[MISSING]",
-  NEXTAUTH_URL: process.env.NEXTAUTH_URL || "http://localhost:3000",
-});
+// Load environment variables immediately
+loadEnvConfig();
+
+export default loadEnvConfig;

@@ -6,12 +6,15 @@ export interface LostItem extends Document {
   itemName: string;
   description: string;
   category: string;
-  lastLocation: string;
-  dateLost: Date;
+  lostLocation: string; // Changed from lastLocation for consistency
+  lostDate: Date; // Changed from dateLost for consistency
   imageURL?: string;
+  images?: string[]; // Added to match API usage
   reportedBy: mongoose.Types.ObjectId | User;
   contactEmail: string;
   contactPhone?: string;
+  ownerName?: string; // Added to match API usage
+  reward?: string; // Added to match API usage
   status: "lost" | "found" | "claimed" | "foundReported" | "pending_claim";
   foundReports: mongoose.Types.ObjectId[];
   matchedWithFoundItem?: mongoose.Types.ObjectId;
@@ -57,13 +60,15 @@ const lostItemSchema = new Schema<LostItem>(
     },
 
     // Location & Time
-    lastLocation: {
+    lostLocation: {
+      // Changed from lastLocation
       type: String,
-      required: [true, "Last known location is required"],
+      required: [true, "Lost location is required"],
       trim: true,
       maxlength: [200, "Location cannot exceed 200 characters"],
     },
-    dateLost: {
+    lostDate: {
+      // Changed from dateLost
       type: Date,
       required: [true, "Date when item was lost is required"],
     },
@@ -80,8 +85,16 @@ const lostItemSchema = new Schema<LostItem>(
         message: "Invalid image URL format",
       },
     },
+    images: {
+      type: [String],
+      default: [],
+    },
 
-    // Reporter Info
+    // Owner and Reporter Info
+    ownerName: {
+      type: String,
+      trim: true,
+    },
     reportedBy: {
       type: Schema.Types.ObjectId,
       ref: "User",
@@ -98,6 +111,10 @@ const lostItemSchema = new Schema<LostItem>(
       type: String,
       trim: true,
       match: [/^[0-9+\-\s()]{10,15}$/, "Please provide a valid phone number"],
+    },
+    reward: {
+      type: String,
+      trim: true,
     },
 
     // Status & Related Reports

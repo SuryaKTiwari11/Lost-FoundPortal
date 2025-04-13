@@ -1,5 +1,21 @@
 import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+
+// Function to handle API routes
+function handleApiRoutes(request: NextRequest) {
+  // Add debugging headers and logging for API routes
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-api-middleware", "true");
+
+  console.log(`API Request: ${request.method} ${request.nextUrl.pathname}`);
+
+  return NextResponse.next({
+    request: {
+      headers: requestHeaders,
+    },
+  });
+}
 
 // More advanced middleware with custom callback
 export default withAuth(
@@ -7,6 +23,11 @@ export default withAuth(
   function middleware(req) {
     const token = req.nextauth.token;
     const path = req.nextUrl.pathname;
+
+    // If this is an API route, use the API handler
+    if (path.startsWith("/api/")) {
+      return handleApiRoutes(req);
+    }
 
     // Debug token information (this will appear in server logs)
     console.log(`Middleware processing path: ${path}`);
@@ -73,6 +94,8 @@ export default withAuth(
 // Apply middleware to these routes (be specific to avoid over-protection)
 export const config = {
   matcher: [
+    // API routes
+    "/api/:path*",
     // Protected routes pattern
     "/admin/:path*",
     "/dashboard/:path*",

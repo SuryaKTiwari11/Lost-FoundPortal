@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/option";
-import dbConnect from "@/lib/dbConnect";
+import dbConnect, { connectToDatabase } from "@/lib/dbConnect";
 import LostItem from "@/model/lostItem.model";
 import User from "@/model/user.model";
+// Import the environment loader to ensure proper configuration
+import "@/lib/load-env";
 
 // POST handler to create a new lost item
 export async function POST(request: NextRequest) {
@@ -83,7 +85,17 @@ export async function POST(request: NextRequest) {
 // GET method to fetch all lost items or a specific one
 export async function GET(request: NextRequest) {
   try {
-    await dbConnect();
+    console.log("Starting lost items fetch...");
+
+    // Connect to the database with improved error handling
+    try {
+      await dbConnect();
+      console.log("Database connection established");
+    } catch (dbError) {
+      console.error("Database connection error:", dbError);
+      // Try the connection once more with direct environment variable loading
+      await connectToDatabase();
+    }
 
     // Get query parameters
     const searchParams = request.nextUrl.searchParams;
@@ -93,6 +105,14 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get("limit") || "10");
     const skip = (page - 1) * limit;
     const reporter = searchParams.get("reporter"); // Get reporter email parameter
+
+    console.log("Query parameters:", {
+      category,
+      query,
+      page,
+      limit,
+      reporter,
+    });
 
     // Build the filter object
     const filter: any = {};
@@ -132,8 +152,11 @@ export async function GET(request: NextRequest) {
       ];
     }
 
+    console.log("Using filter:", JSON.stringify(filter));
+
     // Count total items (for pagination)
     const total = await LostItem.countDocuments(filter);
+    console.log(`Found ${total} matching items`);
 
     // Fetch items with pagination
     const lostItems = await LostItem.find(filter)
@@ -141,6 +164,8 @@ export async function GET(request: NextRequest) {
       .skip(skip)
       .limit(limit)
       .populate("reportedBy", "name email");
+
+    console.log(`Returning ${lostItems.length} items for page ${page}`);
 
     return NextResponse.json({
       success: true,
@@ -153,10 +178,12 @@ export async function GET(request: NextRequest) {
     });
   } catch (error: any) {
     console.error("Error fetching lost items:", error);
+    console.error("Stack trace:", error.stack);
     return NextResponse.json(
       {
         success: false,
         error: error.message || "Failed to fetch lost items",
+        stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
       },
       { status: 500 }
     );
