@@ -10,9 +10,10 @@ export async function GET(
   try {
     await dbConnect();
 
-    // Get the ID parameter safely by destructuring from the awaited context
-    const { id } = context.params;
-    
+    // Access params correctly in App Router
+    const params = await Promise.resolve(context.params);
+    const { id } = params;
+
     const lostItem = await LostItem.findById(id)
       .populate("reportedBy", "name email username")
       .lean();
@@ -26,7 +27,7 @@ export async function GET(
 
     return NextResponse.json({ success: true, data: lostItem });
   } catch (error: any) {
-    console.error(`Error fetching lost item ${context.params.id}:`, error);
+    console.error(`Error fetching lost item:`, error);
     return NextResponse.json(
       {
         success: false,
@@ -45,9 +46,10 @@ export async function PUT(
   try {
     await dbConnect();
 
-    // Get the ID parameter safely by destructuring from the awaited context
-    const { id } = context.params;
-    
+    // Access params correctly in App Router
+    const params = await Promise.resolve(context.params);
+    const { id } = params;
+
     const data = await request.json();
 
     const updatedItem = await LostItem.findByIdAndUpdate(id, data, {
@@ -64,7 +66,7 @@ export async function PUT(
 
     return NextResponse.json({ success: true, data: updatedItem });
   } catch (error: any) {
-    console.error(`Error updating lost item ${context.params.id}:`, error);
+    console.error(`Error updating lost item:`, error);
     return NextResponse.json(
       {
         success: false,
@@ -83,9 +85,10 @@ export async function DELETE(
   try {
     await dbConnect();
 
-    // Get the ID parameter safely by destructuring from the awaited context
-    const { id } = context.params;
-    
+    // Access params correctly in App Router
+    const params = await Promise.resolve(context.params);
+    const { id } = params;
+
     const deletedItem = await LostItem.findByIdAndDelete(id);
 
     if (!deletedItem) {
@@ -100,7 +103,7 @@ export async function DELETE(
       message: "Lost item deleted successfully",
     });
   } catch (error: any) {
-    console.error(`Error deleting lost item ${context.params.id}:`, error);
+    console.error(`Error deleting lost item:`, error);
     return NextResponse.json(
       {
         success: false,

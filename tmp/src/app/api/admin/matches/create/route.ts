@@ -93,25 +93,38 @@ export async function POST(
     await foundItem.save();
 
     // Send notification email to the person who reported the lost item
-    if (
-      lostItem.reportedBy &&
-      (lostItem.reportedBy.email || lostItem.contactEmail)
-    ) {
-      const userEmail =
-        typeof lostItem.reportedBy === "object"
-          ? lostItem.reportedBy.email
-          : lostItem.contactEmail;
+    try {
+      // Extract user email using a more robust approach
+      let userEmail = null;
+      let userName = "User";
+
+      if (lostItem.reportedBy) {
+        // Handle both populated and unpopulated reportedBy
+        if (
+          typeof lostItem.reportedBy === "object" &&
+          lostItem.reportedBy !== null
+        ) {
+          // If reportedBy is populated
+          userEmail =
+            lostItem.reportedBy.email || lostItem.reportedBy.universityEmail;
+          userName =
+            lostItem.reportedBy.name || lostItem.reportedBy.username || "User";
+        }
+      }
+
+      // Fallback to contact email on the item if reportedBy didn't provide an email
+      if (!userEmail && lostItem.contactEmail) {
+        userEmail = lostItem.contactEmail;
+      }
 
       if (userEmail) {
+        // Build proper URLs using NEXTAUTH_URL environment variable
         const portalURL = process.env.NEXTAUTH_URL || "http://localhost:3000";
-        const itemDetailsUrl = `${portalURL}/item/${foundItem._id}`;
+        const itemDetailsUrl = `${portalURL}/found-items/${foundItem._id}`;
 
         // Use email template
         const emailData = {
-          userName:
-            typeof lostItem.reportedBy === "object"
-              ? lostItem.reportedBy.name
-              : "User",
+          userName: userName,
           lostItemName: lostItem.itemName,
           foundItemName: foundItem.itemName,
           matchConfidence: "High",
@@ -125,7 +138,19 @@ export async function POST(
           subject: emailTemplate.subject,
           html: emailTemplate.html,
         });
+
+        console.log(
+          `Item match notification email sent successfully to ${userEmail}`
+        );
+      } else {
+        console.warn("No valid email found for the owner of the lost item");
       }
+    } catch (emailError) {
+      // Log email error but don't fail the item match operation
+      console.error(
+        "Failed to send item match notification email:",
+        emailError
+      );
     }
 
     return NextResponse.json({

@@ -96,7 +96,7 @@ export async function GET(request: NextRequest) {
 
     // Build the filter object
     const filter: any = {};
-    
+
     // If reporter email is provided, filter by the reporter
     if (reporter) {
       // First need to find the user with this email
@@ -117,7 +117,7 @@ export async function GET(request: NextRequest) {
         });
       }
     }
-    
+
     // Add category filter if provided
     if (category) {
       filter.category = category;

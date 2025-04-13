@@ -105,8 +105,8 @@ function SelectItem({
   ...props
 }: React.ComponentProps<typeof SelectPrimitive.Item>) {
   // Validation - makes sure value is not undefined or empty
-  if (value === undefined || value === '') {
-    console.warn('SelectItem must have a non-empty value prop');
+  if (value === undefined || value === "") {
+    console.warn("SelectItem must have a non-empty value prop");
     return null;
   }
 

@@ -1,36 +1,109 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Lost & Found Portal
 
-## Getting Started
+## Overview
 
-First, run the development server:
+The Lost & Found Portal is a comprehensive web application designed to help users report, search for, and claim lost or found items. This platform creates a centralized system where community members can easily connect to recover their belongings.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Features
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- **User Authentication**: Secure login and registration system with email verification
+- **Item Reporting**: Easy submission of lost or found items with detailed descriptions and image uploads
+- **Search Functionality**: Advanced search to find items by category, location, date, etc.
+- **Claim Process**: Streamlined process for claiming items with verification steps
+- **Matching System**: Intelligent system to match lost items with found items
+- **Notifications**: Email alerts for potential matches and claim updates
+- **Dashboard**: Personalized user dashboard to manage reports and claims
+- **Admin Panel**: For moderators to verify items, process claims, and manage users
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Technology Stack
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- **Frontend**: Next.js, React, Tailwind CSS, shadcn/ui
+- **Backend**: Next.js API Routes (App Router)
+- **Database**: MongoDB with Mongoose
+- **Authentication**: NextAuth.js
+- **File Storage**: Cloudinary for item images
+- **Email Service**: Nodemailer for notifications
+- **Deployment**: Vercel
 
-## Learn More
+## Installation
 
-To learn more about Next.js, take a look at the following resources:
+1. Clone the repository:
+   ```
+   git clone https://github.com/yourusername/Lost-FoundPortal.git
+   ```
+2. Install dependencies:
+   ```
+   cd Lost-FoundPortal
+   npm install
+   ```
+3. Configure environment variables:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+   - Copy `.env.example` to `.env.local` and update the values:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+   ```
+   cp .env.example .env.local
+   ```
 
-## Deploy on Vercel
+   - Required environment variables:
+     - `MONGODB_URI`: Your MongoDB connection string
+     - `NEXTAUTH_URL`: Your app URL (http://localhost:3000 for development)
+     - `NEXTAUTH_SECRET`: Random string for NextAuth.js encryption
+     - `EMAIL_SERVICE`, `EMAIL_USER`, `EMAIL_PASSWORD`: For email notifications
+     - `CLOUDINARY_*`: For image uploads
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+4. Start the development server:
+   ```
+   npm run dev
+   ```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Usage
+
+1. Register an account or login with your credentials
+2. To report a lost item: Navigate to "Report Lost Item" and fill in the details
+3. To report a found item: Go to "Report Found Item" and provide information
+4. Search the database of items using filters
+5. Claim an item by providing proof of ownership
+6. Administrators can verify found items and process claims through the admin dashboard
+
+## Scripts
+
+- `npm run dev`: Start the development server
+- `npm run build`: Build the application for production
+- `npm start`: Start the production server
+- `npm run lint`: Run ESLint to check code quality
+- `node scripts/test-mongodb-connection.js`: Test MongoDB connection
+- `node scripts/test-email-config.js`: Test email configuration
+
+## Admin Access
+
+For admin access, use:
+
+- Email: admin@lostfound.com
+- Password: (Set in your .env file as ADMIN_PASSWORD)
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+1. Fork the project
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Contact
+
+For any inquiries or issues, please open an issue on this repository or contact the maintainers directly.
+
+## Developers
+
+- Surya Tiwari - 2nd year Thapar University student
+
+---
+
+© 2025 Lost & Found Portal | All Rights Reserved
+[Privacy Policy](https://www.privacypolicygenerator.info/live.php?token=S3viBBVvt7noj1oSZz6XdXL9BEwLYmYn)

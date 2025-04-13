@@ -1,5 +1,12 @@
 import { ILostItem } from "@/models/LostItem";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardFooter,
+} from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { ReliableImage } from "@/components/ui/reliable-image";
 
@@ -12,10 +19,10 @@ export default function ItemCard({ item }: ItemCardProps) {
     <Card className="overflow-hidden border-[#333] bg-[#1A1A1A] text-white hover:shadow-lg transition-shadow duration-300">
       <div className="relative h-48 w-full bg-[#2A2A2A]">
         {item.image ? (
-          <ReliableImage 
-            src={item.image} 
-            alt={item.name} 
-            category={item.category} 
+          <ReliableImage
+            src={item.image}
+            alt={item.name}
+            category={item.category}
             fill={true}
             className="h-full w-full"
           />

@@ -21,24 +21,24 @@ export default function DashboardPage() {
     async function fetchUserItems() {
       if (session?.user?.email) {
         setIsLoading(true);
-        
+
         try {
           // Fetch lost items reported by user
-          const lostResponse = await itemsAPI.getLostItems({ 
+          const lostResponse = await itemsAPI.getLostItems({
             reporter: session.user.email,
-            limit: "10" 
+            limit: "10",
           });
-          
+
           if (lostResponse.success) {
             setLostItems(lostResponse.data || []);
           }
-          
+
           // Fetch found items reported by user
-          const foundResponse = await itemsAPI.getFoundItems({ 
+          const foundResponse = await itemsAPI.getFoundItems({
             reporter: session.user.email,
-            limit: "10" 
+            limit: "10",
           });
-          
+
           if (foundResponse.success) {
             setFoundItems(foundResponse.data || []);
           }
@@ -49,7 +49,7 @@ export default function DashboardPage() {
         }
       }
     }
-    
+
     if (status === "authenticated") {
       fetchUserItems();
     }
@@ -74,8 +74,8 @@ export default function DashboardPage() {
   // Status badge component
   const StatusBadge = ({ status }) => {
     let badgeClass = "";
-    
-    switch(status) {
+
+    switch (status) {
       case "pending":
         badgeClass = "bg-yellow-100 text-yellow-800 border-yellow-200";
         break;
@@ -94,12 +94,8 @@ export default function DashboardPage() {
       default:
         badgeClass = "bg-gray-100 text-gray-800 border-gray-200";
     }
-    
-    return (
-      <Badge className={`capitalize ${badgeClass}`}>
-        {status}
-      </Badge>
-    );
+
+    return <Badge className={`capitalize ${badgeClass}`}>{status}</Badge>;
   };
 
   if (status === "loading") {
@@ -145,23 +141,36 @@ export default function DashboardPage() {
             </h2>
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-[#2A2A2A] p-4 rounded-lg">
-                <div className="text-3xl font-bold text-[#FFD166]">{lostItems.length}</div>
+                <div className="text-3xl font-bold text-[#FFD166]">
+                  {lostItems.length}
+                </div>
                 <div className="text-sm text-gray-400">Lost Items Reported</div>
               </div>
               <div className="bg-[#2A2A2A] p-4 rounded-lg">
-                <div className="text-3xl font-bold text-[#FFD166]">{foundItems.length}</div>
-                <div className="text-sm text-gray-400">Found Items Reported</div>
+                <div className="text-3xl font-bold text-[#FFD166]">
+                  {foundItems.length}
+                </div>
+                <div className="text-sm text-gray-400">
+                  Found Items Reported
+                </div>
               </div>
               <div className="bg-[#2A2A2A] p-4 rounded-lg">
                 <div className="text-3xl font-bold text-[#FFD166]">
-                  {lostItems.filter(item => item.status === 'matched' || item.status === 'claimed').length}
+                  {
+                    lostItems.filter(
+                      (item) =>
+                        item.status === "matched" || item.status === "claimed"
+                    ).length
+                  }
                 </div>
                 <div className="text-sm text-gray-400">Items Recovered</div>
               </div>
               <div className="bg-[#2A2A2A] p-4 rounded-lg">
                 <div className="text-3xl font-bold text-[#FFD166]">
-                  {lostItems.filter(item => item.status === 'pending').length + 
-                   foundItems.filter(item => item.status === 'pending').length}
+                  {lostItems.filter((item) => item.status === "pending")
+                    .length +
+                    foundItems.filter((item) => item.status === "pending")
+                      .length}
                 </div>
                 <div className="text-sm text-gray-400">Pending Items</div>
               </div>
@@ -173,7 +182,10 @@ export default function DashboardPage() {
               Quick Actions
             </h2>
             <div className="grid grid-cols-2 gap-4">
-              <Link href="/report-lost" className="bg-[#2A2A2A] hover:bg-[#333333] p-4 rounded-md transition-colors">
+              <Link
+                href="/report-lost"
+                className="bg-[#2A2A2A] hover:bg-[#333333] p-4 rounded-md transition-colors"
+              >
                 <span className="block text-white font-medium">
                   Report Lost
                 </span>
@@ -181,7 +193,10 @@ export default function DashboardPage() {
                   File a lost item report
                 </span>
               </Link>
-              <Link href="/report-found" className="bg-[#2A2A2A] hover:bg-[#333333] p-4 rounded-md transition-colors">
+              <Link
+                href="/report-found"
+                className="bg-[#2A2A2A] hover:bg-[#333333] p-4 rounded-md transition-colors"
+              >
                 <span className="block text-white font-medium">
                   Report Found
                 </span>
@@ -189,7 +204,10 @@ export default function DashboardPage() {
                   Report an item you found
                 </span>
               </Link>
-              <Link href="/lost-items" className="bg-[#2A2A2A] hover:bg-[#333333] p-4 rounded-md transition-colors">
+              <Link
+                href="/lost-items"
+                className="bg-[#2A2A2A] hover:bg-[#333333] p-4 rounded-md transition-colors"
+              >
                 <span className="block text-white font-medium">
                   Browse Lost
                 </span>
@@ -197,7 +215,10 @@ export default function DashboardPage() {
                   View lost item listings
                 </span>
               </Link>
-              <Link href="/found-items" className="bg-[#2A2A2A] hover:bg-[#333333] p-4 rounded-md transition-colors">
+              <Link
+                href="/found-items"
+                className="bg-[#2A2A2A] hover:bg-[#333333] p-4 rounded-md transition-colors"
+              >
                 <span className="block text-white font-medium">
                   Browse Found
                 </span>
@@ -213,17 +234,23 @@ export default function DashboardPage() {
           <h2 className="text-xl font-semibold text-[#FFD166] mb-4">
             My Reported Items
           </h2>
-          
+
           <Tabs defaultValue="lost" className="w-full">
             <TabsList className="mb-6 bg-[#2A2A2A]">
-              <TabsTrigger value="lost" className="data-[state=active]:bg-[#FFD166] data-[state=active]:text-black">
+              <TabsTrigger
+                value="lost"
+                className="data-[state=active]:bg-[#FFD166] data-[state=active]:text-black"
+              >
                 Lost Items
               </TabsTrigger>
-              <TabsTrigger value="found" className="data-[state=active]:bg-[#FFD166] data-[state=active]:text-black">
+              <TabsTrigger
+                value="found"
+                className="data-[state=active]:bg-[#FFD166] data-[state=active]:text-black"
+              >
                 Found Items
               </TabsTrigger>
             </TabsList>
-            
+
             <TabsContent value="lost">
               {isLoading ? (
                 <div className="flex justify-center py-8">
@@ -247,7 +274,10 @@ export default function DashboardPage() {
                     </thead>
                     <tbody>
                       {lostItems.map((item) => (
-                        <tr key={item._id} className="border-b border-[#333333] hover:bg-[#1E1E1E]">
+                        <tr
+                          key={item._id}
+                          className="border-b border-[#333333] hover:bg-[#1E1E1E]"
+                        >
                           <td className="py-2 px-4">{item.itemName}</td>
                           <td className="py-2 px-4">{item.category}</td>
                           <td className="py-2 px-4">
@@ -271,7 +301,7 @@ export default function DashboardPage() {
                 </div>
               )}
             </TabsContent>
-            
+
             <TabsContent value="found">
               {isLoading ? (
                 <div className="flex justify-center py-8">
@@ -295,11 +325,16 @@ export default function DashboardPage() {
                     </thead>
                     <tbody>
                       {foundItems.map((item) => (
-                        <tr key={item._id} className="border-b border-[#333333] hover:bg-[#1E1E1E]">
+                        <tr
+                          key={item._id}
+                          className="border-b border-[#333333] hover:bg-[#1E1E1E]"
+                        >
                           <td className="py-2 px-4">{item.itemName}</td>
                           <td className="py-2 px-4">{item.category}</td>
                           <td className="py-2 px-4">
-                            {formatDate(item.dateFound || item.foundDate || item.createdAt)}
+                            {formatDate(
+                              item.dateFound || item.foundDate || item.createdAt
+                            )}
                           </td>
                           <td className="py-2 px-4">
                             <StatusBadge status={item.status} />

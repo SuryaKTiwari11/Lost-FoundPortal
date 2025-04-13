@@ -6,14 +6,14 @@ import mongoose from "mongoose";
 // GET handler to retrieve a single found item by ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
     // Connect to database
     await dbConnect();
 
     // Validate ID format
-    const { id } = params;
+    const id = context.params.id;
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json(
         {
@@ -45,7 +45,10 @@ export async function GET(
       data: foundItem,
     });
   } catch (error: any) {
-    console.error(`Error fetching found item with ID ${params.id}:`, error);
+    console.error(
+      `Error fetching found item with ID ${context.params.id}:`,
+      error
+    );
     return NextResponse.json(
       {
         success: false,
@@ -59,14 +62,14 @@ export async function GET(
 // PUT handler to update a found item
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
     // Connect to database
     await dbConnect();
 
     // Validate ID format
-    const { id } = params;
+    const id = context.params.id;
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json(
         {
@@ -103,7 +106,10 @@ export async function PUT(
       data: updatedItem,
     });
   } catch (error: any) {
-    console.error(`Error updating found item with ID ${params.id}:`, error);
+    console.error(
+      `Error updating found item with ID ${context.params.id}:`,
+      error
+    );
     return NextResponse.json(
       {
         success: false,
@@ -117,14 +123,14 @@ export async function PUT(
 // DELETE handler to delete a found item
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
     // Connect to database
     await dbConnect();
 
     // Validate ID format
-    const { id } = params;
+    const id = context.params.id;
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json(
         {
@@ -154,7 +160,10 @@ export async function DELETE(
       data: { message: "Found item deleted successfully" },
     });
   } catch (error: any) {
-    console.error(`Error deleting found item with ID ${params.id}:`, error);
+    console.error(
+      `Error deleting found item with ID ${context.params.id}:`,
+      error
+    );
     return NextResponse.json(
       {
         success: false,

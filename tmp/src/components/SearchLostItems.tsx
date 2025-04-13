@@ -7,7 +7,11 @@ import { ILostItem } from "@/models/LostItem";
 import { Input } from "@/components/ui/input";
 import { Search, Calendar as CalendarIcon, Tag } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -20,10 +24,10 @@ export default function SearchLostItems() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  
+
   // Get query from URL if available
-  const urlQuery = searchParams.get('query') || '';
-  
+  const urlQuery = searchParams.get("query") || "";
+
   // State management
   const [searchTerm, setSearchTerm] = useState(urlQuery);
   const [selectedCategory, setSelectedCategory] = useState("");
@@ -33,7 +37,15 @@ export default function SearchLostItems() {
   const [allItems, setAllItems] = useState<ILostItem[]>(initialItems);
 
   // Categories for filter
-  const categories = ["All", "Electronics", "Clothing", "Documents", "Accessories", "Books", "Other"];
+  const categories = [
+    "All",
+    "Electronics",
+    "Clothing",
+    "Documents",
+    "Accessories",
+    "Books",
+    "Other",
+  ];
 
   // Fetch real data from API
   useEffect(() => {
@@ -42,33 +54,36 @@ export default function SearchLostItems() {
       try {
         // Prepare query params
         const params = new URLSearchParams();
-        if (searchTerm) params.append('query', searchTerm);
-        if (selectedCategory && selectedCategory !== 'All') params.append('category', selectedCategory);
-        if (date) params.append('date', date.toISOString().split('T')[0]);
-        
+        if (searchTerm) params.append("query", searchTerm);
+        if (selectedCategory && selectedCategory !== "All")
+          params.append("category", selectedCategory);
+        if (date) params.append("date", date.toISOString().split("T")[0]);
+
         // Make API request
         const response = await fetch(`/api/lost-items?${params.toString()}`);
-        
+
         if (!response.ok) {
-          throw new Error('Failed to fetch lost items');
+          throw new Error("Failed to fetch lost items");
         }
-        
+
         const responseData = await response.json();
-        
+
         if (responseData.success) {
           // Transform API data to match our ILostItem interface
           const items: ILostItem[] = responseData.data.map((item: any) => ({
             id: item._id,
             name: item.itemName,
-            description: item.description || '',
+            description: item.description || "",
             category: item.category,
-            location: item.lostLocation || item.lastSeenLocation || '',
+            location: item.lostLocation || item.lastSeenLocation || "",
             date: item.lostDate || item.lastSeenDate || item.createdAt,
-            image: item.imageURL || (item.images && item.images.length > 0 ? item.images[0] : null),
-            status: item.status || 'lost',
-            contactInfo: item.contactEmail || '',
+            image:
+              item.imageURL ||
+              (item.images && item.images.length > 0 ? item.images[0] : null),
+            status: item.status || "lost",
+            contactInfo: item.contactEmail || "",
           }));
-          
+
           setAllItems(items);
           setFilteredItems(items);
         } else {
@@ -87,30 +102,34 @@ export default function SearchLostItems() {
   }, [searchTerm, selectedCategory, date]);
 
   // Update URL with search parameters without causing page reload
-  const updateSearchParams = useCallback((term: string, category: string, selectedDate?: Date) => {
-    const params = new URLSearchParams(searchParams);
-    
-    // Update params
-    if (term) params.set('query', term);
-    else params.delete('query');
-    
-    if (category && category !== 'All') params.set('category', category);
-    else params.delete('category');
-    
-    if (selectedDate) params.set('date', selectedDate.toISOString().split('T')[0]);
-    else params.delete('date');
-    
-    // Update URL without refreshing page
-    const newUrl = `${pathname}?${params.toString()}`;
-    window.history.pushState({ path: newUrl }, '', newUrl);
-  }, [pathname, searchParams]);
+  const updateSearchParams = useCallback(
+    (term: string, category: string, selectedDate?: Date) => {
+      const params = new URLSearchParams(searchParams);
+
+      // Update params
+      if (term) params.set("query", term);
+      else params.delete("query");
+
+      if (category && category !== "All") params.set("category", category);
+      else params.delete("category");
+
+      if (selectedDate)
+        params.set("date", selectedDate.toISOString().split("T")[0]);
+      else params.delete("date");
+
+      // Update URL without refreshing page
+      const newUrl = `${pathname}?${params.toString()}`;
+      window.history.pushState({ path: newUrl }, "", newUrl);
+    },
+    [pathname, searchParams]
+  );
 
   // Handle search form submission
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     updateSearchParams(searchTerm, selectedCategory, date);
-    
+
     setIsLoading(true);
     // Apply the search after a brief delay to show loading state
     setTimeout(() => {
@@ -144,7 +163,10 @@ export default function SearchLostItems() {
         <form onSubmit={handleSearch}>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="relative">
-              <label htmlFor="search" className="block text-sm font-medium text-gray-300 mb-2">
+              <label
+                htmlFor="search"
+                className="block text-sm font-medium text-gray-300 mb-2"
+              >
                 Search Items
               </label>
               <div className="relative">
@@ -161,7 +183,10 @@ export default function SearchLostItems() {
             </div>
 
             <div>
-              <label htmlFor="category" className="block text-sm font-medium text-gray-300 mb-2">
+              <label
+                htmlFor="category"
+                className="block text-sm font-medium text-gray-300 mb-2"
+              >
                 Category
               </label>
               <div className="relative">
@@ -245,9 +270,7 @@ export default function SearchLostItems() {
             >
               Clear Filters
             </Button>
-            <Button type="submit">
-              Search
-            </Button>
+            <Button type="submit">Search</Button>
           </div>
         </form>
       </div>
@@ -289,7 +312,10 @@ export default function SearchLostItems() {
         {isLoading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {Array.from({ length: 8 }).map((_, index) => (
-              <div key={index} className="h-64 bg-[#1A1A1A] rounded-lg animate-pulse"></div>
+              <div
+                key={index}
+                className="h-64 bg-[#1A1A1A] rounded-lg animate-pulse"
+              ></div>
             ))}
           </div>
         ) : filteredItems.length > 0 ? (

@@ -6,6 +6,7 @@ import {
 } from "@/components/ui/accordion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import Link from "next/link";
 
 export default function AboutPage() {
   return (
@@ -199,6 +200,36 @@ export default function AboutPage() {
         </div>
       </div>
 
+      {/* Developer Info Section */}
+      <div className="mb-16">
+        <h2 className="text-2xl font-bold mb-8 text-center text-white">
+          <span className="text-[#FFD166]">Developer</span> Information
+        </h2>
+
+        <Card className="mb-12">
+          <CardHeader>
+            <CardTitle className="text-2xl text-center">
+              About the Developer
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-gray-300">
+            <p className="mb-4">
+              This Lost & Found Portal was designed and developed entirely by
+              Surya, a 2nd year student at Thapar University. Passionate about
+              creating practical solutions to everyday problems, this project
+              represents his commitment to helping the community through
+              technology.
+            </p>
+            <p>
+              The portal combines a user-friendly interface with powerful
+              features like intelligent matching algorithms and secure
+              verification processes to reunite lost items with their rightful
+              owners.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* CTA section */}
       <div className="text-center bg-[#1A1A1A] border border-[#333333] rounded-xl p-8 md:p-12">
         <h2 className="text-2xl md:text-3xl font-bold mb-4 text-white">
@@ -222,6 +253,13 @@ export default function AboutPage() {
             Browse Found Items
           </a>
         </div>
+      </div>
+
+      {/* Copyright Footer */}
+      <div className="text-center mt-16 text-gray-400 text-sm">
+        <Link href="/about" className="hover:text-[#FFD166] transition-colors">
+          Lost&Found © 2025 Lost & Found Portal. All rights reserved
+        </Link>
       </div>
     </div>
   );

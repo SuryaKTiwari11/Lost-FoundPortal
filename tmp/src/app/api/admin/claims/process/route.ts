@@ -76,53 +76,65 @@ export async function PUT(
     }
 
     // Send notification email to user
-    const userEmail = claim.user.email;
+    const userEmail =
+      claim.user?.email ||
+      (typeof claim.user === "object" && "universityEmail" in claim.user)
+        ? claim.user.universityEmail
+        : null;
 
     if (userEmail) {
-      if (approved) {
-        // Send approval email
-        const emailData = {
-          itemName: claim.item.itemName,
-          userName: claim.user.name,
-          pickupLocation: "Lost & Found Office, Admin Building",
-          contactPerson: "Lost & Found Administrator",
-          pickupInstructions:
-            "Please bring your ID card for verification when collecting the item.",
-        };
+      try {
+        if (approved) {
+          // Send approval email
+          const emailData = {
+            itemName: claim.item.itemName,
+            userName: claim.user?.name || "User",
+            pickupLocation: "Lost & Found Office, Admin Building",
+            contactPerson: "Lost & Found Administrator",
+            pickupInstructions:
+              "Please bring your ID card for verification when collecting the item.",
+          };
 
-        const emailTemplate = emailTemplates.claimApproved(emailData);
+          const emailTemplate = emailTemplates.claimApproved(emailData);
 
-        await sendEmail({
-          to: userEmail,
-          subject: emailTemplate.subject,
-          html: emailTemplate.html,
-        });
-      } else {
-        // Send rejection email
-        const emailHTML = `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
-            <h2 style="color: #222; border-bottom: 1px solid #eee; padding-bottom: 10px;">Claim Not Approved</h2>
-            
-            <p>Hello ${claim.user.name},</p>
-            
-            <p>We're sorry, but your claim for the item "${claim.item.itemName}" has not been approved.</p>
-            
-            <p>This could be due to insufficient proof of ownership or because another person has been verified as the rightful owner.</p>
-            
-            <p>If you have any questions or wish to provide additional information, please contact the Lost & Found office directly.</p>
-            
-            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; color: #777; font-size: 12px;">
-              <p>This is an automated message from the Lost & Found Portal.</p>
+          await sendEmail({
+            to: userEmail,
+            subject: emailTemplate.subject,
+            html: emailTemplate.html,
+          });
+        } else {
+          // Send rejection email
+          const emailHTML = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
+              <h2 style="color: #222; border-bottom: 1px solid #eee; padding-bottom: 10px;">Claim Not Approved</h2>
+              
+              <p>Hello ${claim.user?.name || "User"},</p>
+              
+              <p>We're sorry, but your claim for the item "${claim.item.itemName}" has not been approved.</p>
+              
+              <p>This could be due to insufficient proof of ownership or because another person has been verified as the rightful owner.</p>
+              
+              <p>If you have any questions or wish to provide additional information, please contact the Lost & Found office directly.</p>
+              
+              <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; color: #777; font-size: 12px;">
+                <p>This is an automated message from the Lost & Found Portal.</p>
+              </div>
             </div>
-          </div>
-        `;
+          `;
 
-        await sendEmail({
-          to: userEmail,
-          subject: `Your Claim for ${claim.item.itemName} has been Rejected`,
-          html: emailHTML,
-        });
+          await sendEmail({
+            to: userEmail,
+            subject: `Your Claim for ${claim.item.itemName} has been Rejected`,
+            html: emailHTML,
+          });
+        }
+        console.log(`Email sent successfully to ${userEmail}`);
+      } catch (emailError) {
+        // Log email error but don't fail the request
+        console.error("Failed to send notification email:", emailError);
       }
+    } else {
+      console.warn("No valid email found for user, notification not sent");
     }
 
     return NextResponse.json({

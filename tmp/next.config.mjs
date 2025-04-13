@@ -1,15 +1,26 @@
 import dotenv from "dotenv";
 
-dotenv.config(); // Load environment variables from .env file
+// Load environment variables from the appropriate .env file
+if (process.env.NODE_ENV === "production") {
+  dotenv.config({ path: "./.env.production" });
+} else {
+  dotenv.config(); // Load from .env.local for development
+}
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    domains: ["lh3.googleusercontent.com", "images.unsplash.com", "res.cloudinary.com"],
+    domains: [
+      "lh3.googleusercontent.com",
+      "images.unsplash.com",
+      "res.cloudinary.com",
+    ],
+    // Improved image optimization for production
+    minimumCacheTTL: 60, // Cache optimized images for at least 60 seconds
   },
-  // Optimize webpack configuration for faster development
+  // Optimize webpack configuration
   webpack: (config, { dev, isServer }) => {
-    // Only apply these optimizations in development mode
+    // Only apply development optimizations in dev mode
     if (dev) {
       // Reduce the frequency of file system polling
       config.watchOptions = {
@@ -33,15 +44,29 @@ const nextConfig = {
         };
       }
     }
+    // Production optimizations
+    else {
+      // Enable aggressive code minification in production
+      config.optimization.minimize = true;
+    }
 
     return config;
   },
   // Add output file tracing for better production performance
   outputFileTracing: true,
+  // Enhanced production settings
+  productionBrowserSourceMaps: false, // Disable source maps in production for better performance
+  swcMinify: true, // Use SWC minifier for better performance
+  poweredByHeader: false, // Remove X-Powered-By header for security
+  // Public environment variables
   env: {
-    ADMIN_EMAIL: process.env.ADMIN_EMAIL,
-    ADMIN_PASSWORD: process.env.ADMIN_PASSWORD,
-    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL, // Example public variable
+    NEXT_PUBLIC_API_URL: process.env.NEXTAUTH_URL || "http://localhost:3000",
+    NEXT_PUBLIC_ENV: process.env.NODE_ENV,
+  },
+  // Experimental features for performance
+  experimental: {
+    optimizeCss: true, // Optimize CSS
+    scrollRestoration: true, // Better scroll management
   },
 };
 
