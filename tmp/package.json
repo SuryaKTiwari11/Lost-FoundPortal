@@ -67,6 +67,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@netlify/plugin-nextjs": "^5.10.5",
     "@tailwindcss/postcss": "^4.1.3",
     "@types/bcrypt": "^5.0.2",
     "@types/formidable": "^3.4.5",

@@ -4,7 +4,6 @@ import bcrypt from "bcryptjs";
 import { format } from "date-fns";
 import dbConnect from "@/lib/dbConnect";
 import User from "@/model/user.model";
-import { sendVerificationEmail } from "@/helper/sendVerificationEmail";
 import { generateUsername } from "@/helper/generateUsername";
 
 export async function POST(request: Request) {
@@ -62,13 +61,14 @@ export async function POST(request: Request) {
 
         await existingUserByEmail.save();
 
-        // Send verification email
-        return await handleVerificationEmail(
-          email,
-          username,
-          verifyCode,
-          "User updated and verification email sent.",
-          200
+        // Return success response without sending email
+        return NextResponse.json(
+          {
+            success: true,
+            message:
+              "User updated successfully. Please contact admin for verification.",
+          },
+          { status: 200 }
         );
       } else {
         // User exists and is verified
@@ -87,66 +87,26 @@ export async function POST(request: Request) {
         universityEmail: email,
         password: hashedPassword,
         verifyCode,
-        isVerified: false,
+        isVerified: false, // Set to false by default, admin will verify
         verifyCodeExpiry,
       });
 
       await newUser.save();
 
-      // Send verification email
-      return await handleVerificationEmail(
-        email,
-        username,
-        verifyCode,
-        "User registered successfully. Verification email sent.",
-        201
+      // Return success response without sending email
+      return NextResponse.json(
+        {
+          success: true,
+          message:
+            "User registered successfully. Please contact admin for verification.",
+        },
+        { status: 201 }
       );
     }
   } catch (error: any) {
     console.error("Sign up error:", error);
     return NextResponse.json(
       { success: false, message: error.message || "Failed to register user" },
-      { status: 500 }
-    );
-  }
-}
-
-// Helper function to handle verification email sending and responses
-async function handleVerificationEmail(
-  email: string,
-  username: string,
-  verifyCode: string,
-  successMessage: string,
-  statusCode: number
-) {
-  try {
-    const verificationUrl = `${process.env.NEXTAUTH_URL}/verify-email?code=${verifyCode}&email=${encodeURIComponent(email)}`;
-
-    const emailResponse = await sendVerificationEmail(
-      email,
-      username,
-      verificationUrl
-    );
-
-    if (!emailResponse.success) {
-      console.error("Failed to send verification email:", emailResponse.error);
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Failed to send verification email. Please try again.",
-        },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json(
-      { success: true, message: successMessage },
-      { status: statusCode }
-    );
-  } catch (error: any) {
-    console.error("Verification email error:", error);
-    return NextResponse.json(
-      { success: false, message: "Failed to send verification email" },
       { status: 500 }
     );
   }
