@@ -234,5 +234,10 @@ const foundItemSchema = new Schema<FoundItem>(
 );
 
 // Create or use existing model
-export default mongoose.models.FoundItem ||
+const FoundItemModel =
+  mongoose.models.FoundItem ||
   mongoose.model<FoundItem>("FoundItem", foundItemSchema);
+
+// Export both as default and named export for consistency
+export { FoundItemModel as FoundItem };
+export default FoundItemModel;

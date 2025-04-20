@@ -1,115 +1,107 @@
 import { NextRequest, NextResponse } from "next/server";
-import { dbConnect } from "@/lib/dbConnect";
-import FoundItem from "@/model/foundItem.model";
-import mongoose from "mongoose";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/option";
+import { foundItemsService } from "@/services/items/foundItems.service";
+import { validateUpdateFoundItem } from "@/validators/items/foundItems.validator";
 
-// GET handler to retrieve a single found item by ID
-export async function GET(
-  request: NextRequest,
-  context: { params: { id: string } }
-) {
+interface Params {
+  params: {
+    id: string;
+  };
+}
+
+/**
+ * GET handler to fetch a specific found item by ID
+ */
+export async function GET(request: NextRequest, { params }: Params) {
   try {
-    // Connect to database
-    await dbConnect();
+    const { id } = params;
 
-    // Validate ID format
-    const id = context.params.id;
-    if (!mongoose.Types.ObjectId.isValid(id)) {
+    if (!id) {
       return NextResponse.json(
-        {
-          success: false,
-          error: "Invalid item ID format",
-        },
+        { success: false, error: "Item ID is required" },
         { status: 400 }
       );
     }
 
-    // Find the found item by ID
-    const foundItem = await FoundItem.findById(id)
-      .populate("reportedBy", "name email username")
-      .lean();
-
-    // If no item found, return 404
-    if (!foundItem) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Found item not found",
-        },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json({
-      success: true,
-      data: foundItem,
-    });
+    const result = await foundItemsService.getFoundItemById(id);
+    return NextResponse.json(result);
   } catch (error: any) {
-    console.error(
-      `Error fetching found item with ID ${context.params.id}:`,
-      error
-    );
+    console.error(`Error fetching found item with ID ${params.id}:`, error);
     return NextResponse.json(
       {
         success: false,
         error: error.message || "Failed to fetch found item",
       },
-      { status: 500 }
+      { status: error.message === "Found item not found" ? 404 : 500 }
     );
   }
 }
 
-// PUT handler to update a found item
-export async function PUT(
-  request: NextRequest,
-  context: { params: { id: string } }
-) {
+/**
+ * PUT handler to update a specific found item by ID
+ */
+export async function PUT(request: NextRequest, { params }: Params) {
   try {
-    // Connect to database
-    await dbConnect();
+    const { id } = params;
 
-    // Validate ID format
-    const id = context.params.id;
-    if (!mongoose.Types.ObjectId.isValid(id)) {
+    if (!id) {
+      return NextResponse.json(
+        { success: false, error: "Item ID is required" },
+        { status: 400 }
+      );
+    }
+
+    // Get session to verify authentication
+    const session = await getServerSession(authOptions);
+
+    if (!session?.user) {
+      return NextResponse.json(
+        { success: false, error: "Authentication required" },
+        { status: 401 }
+      );
+    }
+
+    // Parse and validate the request body
+    const data = await request.json();
+
+    const validationResult = validateUpdateFoundItem(data);
+    if (!validationResult.success) {
       return NextResponse.json(
         {
           success: false,
-          error: "Invalid item ID format",
+          error: "Validation failed",
+          details: validationResult.error.flatten(),
         },
         { status: 400 }
       );
     }
 
-    // Parse request body
-    const data = await request.json();
-
-    // Update the found item
-    const updatedItem = await FoundItem.findByIdAndUpdate(
+    // Call the service to update the found item
+    const result = await foundItemsService.updateFoundItem(
       id,
-      { $set: data },
-      { new: true, runValidators: true }
-    ).populate("reportedBy", "name email username");
+      validationResult.data,
+      session.user.id
+    );
 
-    // If no item found to update, return 404
-    if (!updatedItem) {
+    return NextResponse.json(result);
+  } catch (error: any) {
+    console.error(`Error updating found item with ID ${params.id}:`, error);
+
+    if (error.message === "Found item not found") {
       return NextResponse.json(
-        {
-          success: false,
-          error: "Found item not found",
-        },
+        { success: false, error: "Found item not found" },
         { status: 404 }
       );
     }
 
-    return NextResponse.json({
-      success: true,
-      data: updatedItem,
-    });
-  } catch (error: any) {
-    console.error(
-      `Error updating found item with ID ${context.params.id}:`,
-      error
-    );
+    if (error.message === "You are not authorized to update this item") {
+      return NextResponse.json(
+        { success: false, error: "You are not authorized to update this item" },
+        { status: 403 }
+      );
+    }
+
     return NextResponse.json(
       {
         success: false,
@@ -120,50 +112,51 @@ export async function PUT(
   }
 }
 
-// DELETE handler to delete a found item
-export async function DELETE(
-  request: NextRequest,
-  context: { params: { id: string } }
-) {
+/**
+ * DELETE handler to delete a specific found item by ID
+ */
+export async function DELETE(request: NextRequest, { params }: Params) {
   try {
-    // Connect to database
-    await dbConnect();
+    const { id } = params;
 
-    // Validate ID format
-    const id = context.params.id;
-    if (!mongoose.Types.ObjectId.isValid(id)) {
+    if (!id) {
       return NextResponse.json(
-        {
-          success: false,
-          error: "Invalid item ID format",
-        },
+        { success: false, error: "Item ID is required" },
         { status: 400 }
       );
     }
 
-    // Delete the found item
-    const deletedItem = await FoundItem.findByIdAndDelete(id);
+    // Get session to verify authentication
+    const session = await getServerSession(authOptions);
 
-    // If no item found to delete, return 404
-    if (!deletedItem) {
+    if (!session?.user) {
       return NextResponse.json(
-        {
-          success: false,
-          error: "Found item not found",
-        },
+        { success: false, error: "Authentication required" },
+        { status: 401 }
+      );
+    }
+
+    // Call the service to delete the found item
+    const result = await foundItemsService.deleteFoundItem(id, session.user.id);
+
+    return NextResponse.json(result);
+  } catch (error: any) {
+    console.error(`Error deleting found item with ID ${params.id}:`, error);
+
+    if (error.message === "Found item not found") {
+      return NextResponse.json(
+        { success: false, error: "Found item not found" },
         { status: 404 }
       );
     }
 
-    return NextResponse.json({
-      success: true,
-      data: { message: "Found item deleted successfully" },
-    });
-  } catch (error: any) {
-    console.error(
-      `Error deleting found item with ID ${context.params.id}:`,
-      error
-    );
+    if (error.message === "You are not authorized to delete this item") {
+      return NextResponse.json(
+        { success: false, error: "You are not authorized to delete this item" },
+        { status: 403 }
+      );
+    }
+
     return NextResponse.json(
       {
         success: false,

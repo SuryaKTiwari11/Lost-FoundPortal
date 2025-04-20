@@ -27,6 +27,19 @@ export interface User {
   updatedAt: Date;
 }
 
+// Email Template Types
+export interface EmailTemplate {
+  _id: string;
+  name: string;
+  subject: string;
+  body: string;
+  type: "lostItem" | "foundItem" | "itemMatched" | "claimRequest" | "general";
+  variables?: string[];
+  createdBy?: string;
+  createdAt: Date;
+  updatedAt?: Date;
+}
+
 // Item Types
 export interface BaseItem {
   _id: string;

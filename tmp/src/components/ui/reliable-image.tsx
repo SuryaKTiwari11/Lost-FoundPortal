@@ -1,99 +1,109 @@
 "use client";
 
-import { useState } from "react";
 import Image from "next/image";
-
-// Base64 encoded placeholder image - small gray square with an icon
-// This is embedded directly in the code so it never fails to load
-const PLACEHOLDER_IMAGE =
-  "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiMzMzMiLz48cGF0aCBkPSJNODAgNjBIMTIwVjE0MEg4MFY2MFoiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzIi8+PHBhdGggZD0iTTY1IDkwSDEzNSIgc3Ryb2tlPSIjZmZmIiBzdHJva2Utd2lkdGg9IjMiLz48L3N2Zz4=";
-
-// Different placeholder image for categories
-const CATEGORY_PLACEHOLDERS: Record<string, string> = {
-  electronics:
-    "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiMzMzMiLz48cGF0aCBkPSJNNjUgNzBIMTM1VjEzMEg2NVY3MFoiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzIi8+PHBhdGggZD0iTTgwIDk1SDEyMCIgc3Ryb2tlPSIjZmZmIiBzdHJva2Utd2lkdGg9IjMiLz48Y2lyY2xlIGN4PSIxMDAiIGN5PSIxMTAiIHI9IjUiIGZpbGw9IiNmZmYiLz48L3N2Zz4=", // Computer icon
-  clothing:
-    "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiMzMzMiLz48cGF0aCBkPSJNNzAgMTQwSDEzMEwxNDAgNzBMMTIwIDYwSDgwTDYwIDcwTDcwIDE0MFoiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzIi8+PC9zdmc+", // Simple shirt icon
-  documents:
-    "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiMzMzMiLz48cGF0aCBkPSJNNjAgNTBIMTQwVjE1MEg2MFY1MFoiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzIi8+PHBhdGggZD0iTTcwIDcwSDEzMCIgc3Ryb2tlPSIjZmZmIiBzdHJva2Utd2lkdGg9IjIiLz48cGF0aCBkPSJNNzAgOTBIMTMwIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMiIvPjxwYXRoIGQ9Ik03MCAxMTBIMTAwIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMiIvPjwvc3ZnPg==", // Document icon
-  accessories:
-    "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiMzMzMiLz48Y2lyY2xlIGN4PSIxMDAiIGN5PSI4MCIgcj0iMzAiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzIi8+PHBhdGggZD0iTTEwMCAxMTBWMTUwIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMyIvPjwvc3ZnPg==", // Watch/accessory icon
-  books:
-    "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiMzMzMiLz48cGF0aCBkPSJNNTUgNTBIMTQ1VjE1MEg1NVY1MFoiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzIi8+PHBhdGggZD0iTTcwIDUwVjE1MCIgc3Ryb2tlPSIjZmZmIiBzdHJva2Utd2lkdGg9IjIiLz48L3N2Zz4=", // Book icon
-  bags: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiMzMzMiLz48cGF0aCBkPSJNNzAgNjBIMTMwVjE0MEg3MFY2MFoiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIzIi8+PHBhdGggZD0iTTgwIDYwQzgwIDUwIDkwIDQwIDEwMCA0MFM4MCA1MCA4MCA2MFoiIHN0cm9rZT0iI2ZmZiIvPjxwYXRoIGQ9Ik0xMjAgNjBDMTIwIDUwIDExMCA0MCAxMDAgNDBTMTIwIDUwIDEyMCA2MFoiIHN0cm9rZT0iI2ZmZiIvPjwvc3ZnPg==", // Bag icon
-};
+import { useState } from "react";
+import { AlertTriangle } from "lucide-react"; // Changed from ExclamationTriangleIcon to AlertTriangle
 
 interface ReliableImageProps {
-  src: string | null | undefined;
+  src: string;
   alt: string;
-  category?: string;
-  className?: string;
+  fill?: boolean;
   width?: number;
   height?: number;
+  className?: string;
+  sizes?: string;
   priority?: boolean;
-  fill?: boolean;
-  layout?: "fill" | "fixed" | "intrinsic" | "responsive";
-  objectFit?: "contain" | "cover" | "fill" | "none" | "scale-down";
-  unoptimized?: boolean;
-  onLoadingComplete?: (result: {
-    naturalWidth: number;
-    naturalHeight: number;
-  }) => void;
+  category?: string;
 }
 
-export function ReliableImage({
+export const ReliableImage = ({
   src,
   alt,
-  category,
-  className,
-  priority = false,
   fill = false,
-  objectFit = "cover",
-  ...props
-}: ReliableImageProps) {
-  const [imgSrc, setImgSrc] = useState<string>(
-    src ||
-      (category && category.toLowerCase() in CATEGORY_PLACEHOLDERS
-        ? CATEGORY_PLACEHOLDERS[category.toLowerCase()]
-        : PLACEHOLDER_IMAGE)
-  );
-  const [imgError, setImgError] = useState<boolean>(false);
+  width,
+  height,
+  className = "",
+  sizes,
+  priority = false,
+  category = "item",
+}: ReliableImageProps) => {
+  const [isError, setIsError] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // This handles image load errors and uses appropriate placeholder
+  // Function to get placeholder image based on category - using dummy URLs that are guaranteed to work
+  const getPlaceholderImage = () => {
+    // Default fallback image based on category - using dummy placeholder URLs
+    const categoryMap: Record<string, string> = {
+      Electronics: "https://placehold.co/400x400/333/FFD166?text=Electronics",
+      Clothing: "https://placehold.co/400x400/333/FFD166?text=Clothing",
+      Accessories: "https://placehold.co/400x400/333/FFD166?text=Accessories",
+      Books: "https://placehold.co/400x400/333/FFD166?text=Books",
+      Documents: "https://placehold.co/400x400/333/FFD166?text=Documents",
+      Keys: "https://placehold.co/400x400/333/FFD166?text=Keys",
+      Wallet: "https://placehold.co/400x400/333/FFD166?text=Wallet",
+      Other: "https://placehold.co/400x400/333/FFD166?text=Other",
+    };
+
+    return (
+      categoryMap[category] ||
+      "https://placehold.co/400x400/333/FFD166?text=Item"
+    );
+  };
+
+  // For consistent styling
+  const imgStyles = `${className} ${isLoading ? "blur-sm scale-110" : "blur-0 scale-100"} transition-all duration-500 ease-in-out`;
+
   const handleError = () => {
-    if (!imgError) {
-      const fallback =
-        category && category.toLowerCase() in CATEGORY_PLACEHOLDERS
-          ? CATEGORY_PLACEHOLDERS[category.toLowerCase()]
-          : PLACEHOLDER_IMAGE;
-
-      setImgSrc(fallback);
-      setImgError(true);
-    }
+    setIsError(true);
+    setIsLoading(false);
   };
 
   return (
-    <div className={`relative overflow-hidden ${className || ""}`}>
-      {fill ? (
+    <>
+      {isError ? (
+        <div
+          className={`flex items-center justify-center bg-[#2A2A2A] ${fill ? "h-full w-full" : ""}`}
+          style={!fill ? { width, height } : undefined}
+        >
+          {fill ? (
+            <div className="relative h-full w-full">
+              <Image
+                src={getPlaceholderImage()}
+                alt={alt}
+                fill={true}
+                className={`object-cover opacity-60 ${className}`}
+                sizes={sizes}
+                unoptimized={true}
+              />
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400 p-4">
+                <AlertTriangle className="h-8 w-8 mb-2" />
+                <p className="text-center text-sm">Image not available</p>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center p-4">
+              <AlertTriangle className="h-6 w-6 text-gray-400 mb-1" />
+              <p className="text-center text-sm text-gray-400">
+                Image failed to load
+              </p>
+            </div>
+          )}
+        </div>
+      ) : (
         <Image
-          src={imgSrc}
+          src={src}
           alt={alt}
-          fill={true}
-          className={`object-${objectFit}`}
+          fill={fill}
+          width={!fill ? width : undefined}
+          height={!fill ? height : undefined}
+          className={imgStyles}
+          sizes={sizes}
           priority={priority}
           onError={handleError}
-          unoptimized={imgError} // Don't optimize placeholder SVGs
-          {...props}
-        />
-      ) : (
-        <img
-          src={imgSrc}
-          alt={alt}
-          className={className || ""}
-          onError={handleError}
-          {...props}
+          onLoad={() => setIsLoading(false)}
+          unoptimized={src.startsWith("http")}
         />
       )}
-    </div>
+    </>
   );
-}
+};

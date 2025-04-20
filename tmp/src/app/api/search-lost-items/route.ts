@@ -1,53 +1,55 @@
 import { NextRequest, NextResponse } from "next/server";
-import dbConnect from "@/lib/dbConnect";
-import { LostItem } from "@/model/lostItem.model";
+import { lostItemsService } from "@/services/items/lostItems.service";
+import { z } from "zod";
+
+// Search query validator schema
+const searchQuerySchema = z.object({
+  query: z.string().optional(),
+  category: z.string().optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+  limit: z.coerce.number().optional().default(20),
+});
 
 export async function GET(request: NextRequest) {
   try {
-    await dbConnect();
-
+    // Extract search parameters
     const searchParams = request.nextUrl.searchParams;
-    const query = searchParams.get("query");
-    const category = searchParams.get("category");
-    const startDate = searchParams.get("startDate");
-    const endDate = searchParams.get("endDate");
+    const params = Object.fromEntries(searchParams.entries());
 
-    // Build query object
-    const searchQuery: any = {};
-
-    if (query && query.trim() !== "") {
-      searchQuery["$or"] = [
-        { name: { $regex: query, $options: "i" } },
-        { description: { $regex: query, $options: "i" } },
-        { location: { $regex: query, $options: "i" } },
-      ];
+    // Validate search parameters
+    const validationResult = searchQuerySchema.safeParse(params);
+    if (!validationResult.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Invalid search parameters",
+          details: validationResult.error.flatten(),
+        },
+        { status: 400 }
+      );
     }
 
-    // Add category filter
-    if (category && category !== "all") {
-      searchQuery.category = category;
-    }
-
-    // Add date range filter
-    if (startDate || endDate) {
-      searchQuery.date = {};
-      if (startDate) {
-        searchQuery.date.$gte = new Date(startDate);
+    // Call service to search lost items
+    const result = await lostItemsService.searchLostItems(
+      validationResult.data.query || "",
+      {
+        category: validationResult.data.category,
+        startDate: validationResult.data.startDate,
+        endDate: validationResult.data.endDate,
+        limit: validationResult.data.limit,
       }
-      if (endDate) {
-        searchQuery.date.$lte = new Date(endDate);
-      }
-    }
+    );
 
-    const items = await LostItem.find(searchQuery)
-      .sort({ createdAt: -1 })
-      .limit(20);
-
-    return NextResponse.json({ items });
-  } catch (error) {
+    return NextResponse.json(result);
+  } catch (error: any) {
     console.error("Search error:", error);
     return NextResponse.json(
-      { error: "Failed to search items" },
+      {
+        success: false,
+        error: "Failed to search items",
+        details: error.message,
+      },
       { status: 500 }
     );
   }

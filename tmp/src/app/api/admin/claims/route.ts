@@ -1,14 +1,14 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/option";
-import dbConnect from "@/lib/dbConnect";
-import ClaimRequest from "@/model/claimRequest.model";
+import { claimsService } from "@/services/claims.service";
 import type { ApiResponse } from "@/types";
 
 export async function GET(
   request: NextRequest
 ): Promise<NextResponse<ApiResponse>> {
   try {
+    // Check admin authentication
     const session = await getServerSession(authOptions);
     if (!session || session.user?.role !== "admin") {
       return NextResponse.json(
@@ -17,24 +17,24 @@ export async function GET(
       );
     }
 
-    await dbConnect();
+    // Get optional status filter from query params
+    const status = request.nextUrl.searchParams.get("status") || undefined;
 
-    // Get pending claim requests with their associated item and user data
-    const claims = await ClaimRequest.find({ status: "pending" })
-      .populate("item")
-      .populate("user")
-      .sort({ createdAt: -1 });
+    // Get claims from service
+    const result = await claimsService.getAllClaims(status);
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        claims,
-      },
-    });
-  } catch (error) {
-    console.error("Error fetching claim requests:", error);
+    if (!result.success) {
+      return NextResponse.json(
+        { success: false, error: result.error },
+        { status: 400 }
+      );
+    }
+
+    return NextResponse.json(result);
+  } catch (error: any) {
+    console.error("Error fetching claims:", error);
     return NextResponse.json(
-      { success: false, error: "Internal server error" },
+      { success: false, error: `Internal server error: ${error.message}` },
       { status: 500 }
     );
   }

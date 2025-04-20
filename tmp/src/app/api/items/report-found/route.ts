@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/option";
-import dbConnect from "@/lib/dbConnect";
-import FoundItem from "@/model/foundItem.model";
-import { foundItemSchema } from "@/schemas/foundItemSchema";
+import { foundItemsService } from "@/services/items/foundItems.service";
+import { validateCreateFoundItem } from "@/validators/items/foundItems.validator";
 
+
+/**
+ * POST handler to report a found item
+ */
 export async function POST(request: NextRequest) {
   try {
     // Check authentication
@@ -17,30 +20,25 @@ export async function POST(request: NextRequest) {
     }
 
     // Parse and validate the request body
-    const body = await request.json();
+    const data = await request.json();
 
     // Only log in development environment
     if (process.env.NODE_ENV === "development") {
-      console.log("Received report form data:", body);
+      console.log("Received report form data:", data);
     }
 
-    try {
-      // Validate with Zod schema
-      foundItemSchema.parse(body);
-    } catch (validationError: any) {
-      console.error("Validation error:", validationError);
+    // Validate with our validator
+    const validationResult = validateCreateFoundItem(data);
+    if (!validationResult.success) {
       return NextResponse.json(
         {
           success: false,
           error: "Invalid form data",
-          details: validationError.errors,
+          details: validationResult.error.flatten(),
         },
         { status: 400 }
       );
     }
-
-    // Connect to database
-    await dbConnect();
 
     // Extract user ID from session
     const userId = session.user.id;
@@ -51,36 +49,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create new found item
-    const newFoundItem = new FoundItem({
-      itemName: body.itemName,
-      description: body.description,
-      category: body.category,
-      foundLocation: body.foundLocation,
-      foundDate: body.foundDate,
-      currentHoldingLocation: body.currentHoldingLocation || "",
-      imageURL: body.imageURL || "",
-      reportedBy: userId,
-      contactEmail: body.contactEmail,
-      contactPhone: body.contactPhone || "",
-      status: "found",
-      isVerified: false,
-      claimRequestIds: [],
-    });
+    // Call service to create found item
+    const result = await foundItemsService.createFoundItem(
+      validationResult.data,
+      userId
+    );
 
-    // Save to database
-    const savedItem = await newFoundItem.save();
-
-    // Only log in development environment
-    if (process.env.NODE_ENV === "development") {
-      console.log("Saved item to database:", savedItem);
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: "Item reported successfully",
-      data: savedItem,
-    });
+    return NextResponse.json(result);
   } catch (error: any) {
     console.error("Error reporting found item:", error);
     return NextResponse.json(

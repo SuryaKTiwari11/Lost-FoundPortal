@@ -1,71 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
-import { dbConnect } from "@/lib/dbConnect";
-import FoundItem from "@/model/foundItem.model";
-import User from "@/model/user.model";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/app/api/auth/[...nextauth]/option";
+import { foundItemsService } from "@/services/items/foundItems.service";
+import { validateFoundItemData } from "@/validators/items/foundItemValidator";
+import type { ApiResponse } from "@/types";
 
-// GET handler to retrieve all found items or filter by status
-export async function GET(request: NextRequest) {
+/**
+ * GET handler for found items
+ */
+export async function GET(
+  request: NextRequest
+): Promise<NextResponse<ApiResponse>> {
   try {
-    // Connect to database
-    await dbConnect();
-
-    // Get query parameters
+    // Extract query parameters
     const searchParams = request.nextUrl.searchParams;
-    const status = searchParams.get("status");
-    const category = searchParams.get("category");
-    const reporter = searchParams.get("reporter"); // Get reporter email parameter
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = searchParams.get("limit")
-      ? parseInt(searchParams.get("limit")!)
-      : 50;
-    const skip = (page - 1) * limit;
+    const params = Object.fromEntries(searchParams.entries());
 
-    // Build query based on filters
-    let query: any = {};
-    if (status) query.status = status;
-    if (category) query.category = category;
+    // Call the service to handle fetching found items
+    const result = await foundItemsService.getFoundItems(params);
 
-    // If reporter email is provided, filter by the reporter
-    if (reporter) {
-      // First need to find the user with this email
-      const reporterUser = await User.findOne({ email: reporter });
-      if (reporterUser) {
-        // Filter items by reportedBy field (user ID)
-        query.reportedBy = reporterUser._id;
-      } else {
-        // If no user found with this email, return empty array
-        return NextResponse.json({
-          success: true,
-          data: [],
-          pagination: {
-            total: 0,
-            page,
-            pages: 0,
-          },
-        });
-      }
-    }
-
-    // Count total items for pagination
-    const total = await FoundItem.countDocuments(query);
-
-    // Execute query with pagination
-    const foundItems = await FoundItem.find(query)
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .populate("reportedBy", "name email username")
-      .lean();
-
-    return NextResponse.json({
-      success: true,
-      data: foundItems,
-      pagination: {
-        total,
-        page,
-        pages: Math.ceil(total / limit),
-      },
-    });
+    return NextResponse.json(result);
   } catch (error: any) {
     console.error("Error fetching found items:", error);
     return NextResponse.json(
@@ -78,32 +32,56 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST handler to create a new found item
-export async function POST(request: NextRequest) {
+/**
+ * POST handler for reporting a found item
+ */
+export async function POST(
+  request: NextRequest
+): Promise<NextResponse<ApiResponse>> {
   try {
-    // Connect to database
-    await dbConnect();
+    // Get authenticated user
+    const session = await getServerSession(authOptions);
+
+    if (!session?.user) {
+      return NextResponse.json(
+        { success: false, error: "Authentication required" },
+        { status: 401 }
+      );
+    }
 
     // Parse request body
-    const data = await request.json();
+    const requestData = await request.json();
 
-    // Create new found item
-    const foundItem = new FoundItem(data);
-    const savedItem = await foundItem.save();
+    // Validate the item data
+    const validationResult = validateFoundItemData(requestData);
 
-    return NextResponse.json(
-      {
-        success: true,
-        data: savedItem,
-      },
-      { status: 201 }
-    );
+    if (!validationResult.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Validation failed",
+          validationErrors: validationResult.errors,
+        },
+        { status: 400 }
+      );
+    }
+
+    // Add user ID to the item data
+    const itemData = {
+      ...requestData,
+      reportedBy: session.user.id,
+    };
+
+    // Call the service to handle reporting the found item
+    const result = await foundItemsService.reportFoundItem(itemData);
+
+    return NextResponse.json(result);
   } catch (error: any) {
-    console.error("Error creating found item:", error);
+    console.error("Error reporting found item:", error);
     return NextResponse.json(
       {
         success: false,
-        error: error.message || "Failed to create found item",
+        error: error.message || "Failed to report found item",
       },
       { status: 500 }
     );

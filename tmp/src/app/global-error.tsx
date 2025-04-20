@@ -27,7 +27,21 @@ export default function GlobalError({
             </p>
             <button
               className="px-4 py-2 bg-[#FFD166] text-[#121212] rounded-md hover:bg-[#FFE066] transition-colors"
-              onClick={() => reset()}
+              onClick={() => {
+                // Check if reset is a function before calling it
+                if (typeof reset === "function") {
+                  try {
+                    reset();
+                  } catch (err) {
+                    console.error("Error resetting:", err);
+                    // Fallback to window reload if reset fails
+                    window.location.reload();
+                  }
+                } else {
+                  // Fallback to window reload if reset is not a function
+                  window.location.reload();
+                }
+              }}
             >
               Try again
             </button>

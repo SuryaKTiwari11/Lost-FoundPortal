@@ -240,18 +240,18 @@ export default function AboutPage() {
           lost items or help others find theirs.
         </p>
         <div className="flex flex-col sm:flex-row justify-center gap-4">
-          <a
+          <Link
             href="/report-lost"
             className="inline-flex items-center justify-center rounded-md bg-[#FFD166] px-6 py-3 text-[#121212] font-medium hover:bg-[#FFD166]/90 transition-colors"
           >
             Report a Lost Item
-          </a>
-          <a
+          </Link>
+          <Link
             href="/found-items"
             className="inline-flex items-center justify-center rounded-md border border-[#333] bg-transparent px-6 py-3 text-white font-medium hover:bg-[#333] hover:text-white transition-colors"
           >
             Browse Found Items
-          </a>
+          </Link>
         </div>
       </div>
 

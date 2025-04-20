@@ -42,13 +42,13 @@ const lostItemSchema = new Schema<LostItem>(
       type: String,
       required: [true, "Item name is required"],
       trim: true,
-      maxlength: [100, "Item name cannot exceed 100 characters"],
+      maxLength: [100, "Item name cannot exceed 100 characters"],
     },
     description: {
       type: String,
       required: [true, "Description is required"],
       trim: true,
-      maxlength: [1000, "Description cannot exceed 1000 characters"],
+      maxLength: [1000, "Description cannot exceed 1000 characters"],
     },
     category: {
       type: String,
@@ -65,7 +65,7 @@ const lostItemSchema = new Schema<LostItem>(
       type: String,
       required: [true, "Lost location is required"],
       trim: true,
-      maxlength: [200, "Location cannot exceed 200 characters"],
+      maxLength: [200, "Location cannot exceed 200 characters"],
     },
     lostDate: {
       // Changed from dateLost
